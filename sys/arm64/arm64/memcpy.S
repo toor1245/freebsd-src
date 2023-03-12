@@ -240,3 +240,77 @@ L(copy64_from_start):
 EEND(memmove)
 END(memcpy)
 
+ENTRY(disasm_str_test)
+	/* str immediate post-index */
+	str	w0, [x3], #-256
+	str	w1, [sp], #255
+
+	str	x2, [x4], #1
+	str	x0, [sp], #-1
+
+	/* str immedate pre-index */
+	str	w0, [x3, #-256]!
+	str	w1, [sp, #255]!
+
+	str	x2, [x4, #1]
+	str	x0, [sp, #-1]
+
+	/* str immediate unsigned offset */
+	str	w0, [x3]
+	str	w0, [x3, #16380]
+	str	w1, [sp, #16380]
+
+	str	x0, [x3]
+	str	x2, [x3, #32760]
+	str	x3, [sp, #32760]
+
+	/* str register */
+	str	w0, [x1, x2, lsl #2]
+	str	w0, [x1, w2, uxtw #2]
+	str	w0, [sp, w2, sxtw]
+	str	w0, [sp, x2, sxtx #0]
+
+	str	x0, [x1, x2, lsl #3]
+	str	x0, [x1, w2, uxtw #3]
+	str	x0, [sp, w2, sxtw]
+	str	x0, [sp, x2, sxtx #0]
+
+	/* strb immediate post-index */
+	strb	w0, [x3], #-256
+	strb	w1, [sp], #255
+
+	/* strb immediate pre-index */
+	strb	w0, [x3, #-256]!
+	strb	w1, [sp, #255]!
+
+	/* strb immediate unsigned offset */
+	strb	w0, [x3]
+	strb	w0, [x3, #4095]
+	strb	w1, [sp, #4095]
+
+	/* strb register */
+	strb	w0, [x1, x2, sxtx #0]
+	strb	w0, [x1, x2, lsl #0]
+	strb	w0, [x1, w2, uxtw]
+	strb	w0, [sp, w2, sxtw]
+	strb	w0, [sp, x2, sxtx]
+
+	/* strh immediate post-index */
+	strh	w0, [x3], #-256
+	strh	w1, [sp], #255
+
+	/* strh immediate pre-index */
+	strh	w0, [x3, #-256]!
+	strh	w1, [sp, #255]!
+
+	/* strh immediate unsigned offset */
+	strh	w0, [x3]
+	strh	w0, [x3, #8190]
+	strh	w1, [sp, #8190]
+	
+	/* strh register */
+	strh	w0, [x1, w2, uxtw #1]
+	strh	w0, [x1, x2, lsl #1]
+	strh	w0, [sp, w2, sxtw]
+	strh	w0, [sp, x2, sxtx #0]
+END(disasm_str_test)
