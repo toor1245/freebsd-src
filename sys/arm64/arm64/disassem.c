@@ -84,7 +84,6 @@ struct arm64_insn_token {
  * Define generic types for instruction printing.
  */
 enum arm64_format_type {
-
 	/*
 	 * OP <RD>, <RN>, <RM>{, <shift [LSL, LSR, ASR]> #imm} SF32/64
 	 * OP <RD>, <RN>, #<imm>{, <shift [0, 12]>} SF32/64
@@ -465,7 +464,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 			 */
 			if (sign_ext == 0) {
 				imm = imm << ((insn >> ARM_INSN_SIZE_OFFSET) &
-					  ARM_INSN_SIZE_MASK);
+				    ARM_INSN_SIZE_MASK);
 				option = 0;
 			}
 			switch (option) {
