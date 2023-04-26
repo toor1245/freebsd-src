@@ -314,3 +314,33 @@ ENTRY(disasm_str_test)
 	strh	w0, [sp, w2, sxtw]
 	strh	w0, [sp, x2, sxtx #0]
 END(disasm_str_test)
+
+ENTRY(disasm_shifted_reg_with_rsv)
+	/* adds shifted regiser */
+	adds	w0, w1, w3, asr #1
+	adds	x0, x1, x2, lsl #2
+
+	/* cmn shifted register, alias of adds */
+	cmn	w0, w4, lsr #31
+	cmn	x1, x10, asr #63
+
+	/* subs shifted register */
+	subs	w0, w11, w12, lsr #0
+	subs	x1, x12, x11, lsl #63
+
+	/* cmp shifted register, alias of subs */
+	cmp	w0, w1, asr #31
+	cmp	x0, x2, lsl #63
+
+	/* negs shifted register, alias of subs */
+	negs	w0, w1, lsr #31
+	negs	x0, x20, asr #0
+
+	/* sub shifted register */
+	sub	w0, w1, w2, lsl #1
+	sub	x0, x2, x1, lsl #5
+
+	/* neg shifted register */
+	neg	w0, w1, lsl #2
+	neg	x2, x3, asr #8
+END(disasm_shifted_reg_with_rsv)
