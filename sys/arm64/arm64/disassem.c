@@ -151,6 +151,9 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_01, OP_RD_SP | OP_RN_SP },	/* mov (to/from sp) */
 	{ "add", "SF(1)|0010001|SHIFT(2)|IMM(12)|RN(5)|RD(5)",
 	    TYPE_01, OP_RD_SP | OP_RN_SP },	/* add immediate */
+	{ "adds", "SF(1)|0101011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
+	    TYPE_01, 0 },
+	    /* adds shifted register, alias cmn shifted register */
 	{ "ldr", "1|SF(1)|111000010|IMM(9)|OPTION(2)|RN(5)|RT(5)",
 	    TYPE_02, OP_SIGN_EXT | OP_RN_SP },	/* ldr immediate post/pre index */
 	{ "ldr", "1|SF(1)|11100101|IMM(12)|RN(5)|RT(5)",
@@ -216,6 +219,12 @@ static struct arm64_insn arm64_i[] = {
 	{ "strh", "01111000001|RM(5)|OPTION(3)|SCALE(1)|10|RN(5)|RT(5)",
 	    TYPE_02, OP_SF32 | OP_RN_SP },
 	    /* strh register */
+	{ "sub", "SF(1)|1001011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
+	    TYPE_01, 0 },
+	    /* sub shifted register, alias neg shifted register */
+	{ "subs", "SF(1)|1101011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
+	    TYPE_01, 0 },
+	    /* subs shifted register, alias cmp/negs shifted register */
 	{ NULL, NULL }
 };
 
