@@ -56,14 +56,14 @@ static const char *w_reg[] = {
 	"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7",
 	"w8", "w9", "w10", "w11", "w12", "w13", "w14", "w15",
 	"w16", "w17", "w18", "w19", "w20", "w21", "w22", "w23",
-	"w24", "w25", "w26", "w27", "w28", "w29", "w30", "wSP",
+	"w24", "w25", "w26", "w27", "w28", "w29", "w30"
 };
 
 static const char *x_reg[] = {
 	"x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7",
 	"x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
 	"x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
-	"x24", "x25", "x26", "x27", "x28", "x29", "LR", "SP",
+	"x24", "x25", "x26", "x27", "x28", "x29", "LR"
 };
 
 static const char *shift_2[] = {
@@ -139,13 +139,7 @@ static struct arm64_insn arm64_i[] = {
 	{ "mov", "SF(1)|001000100000000000000|RN(5)|RD(5)",
 	    TYPE_01, OP_RD_SP | OP_RN_SP },	/* mov (to/from sp) */
 	{ "add", "SF(1)|0010001|SHIFT(2)|IMM(12)|RN(5)|RD(5)",
-<<<<<<< HEAD
-	    TYPE_01, 0 },
-	{ "adds", "SF(1)|0101011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
-	    TYPE_01, 0 }, 			/* adds shifted register, alias cmn shifted register */
-=======
 	    TYPE_01, OP_RD_SP | OP_RN_SP },	/* add immediate */
->>>>>>> ca55da6e3484 (arm64/disassem.c: Add xzr/sp detection)
 	{ "ldr", "1|SF(1)|111000010|IMM(9)|OPTION(2)|RN(5)|RT(5)",
 	    TYPE_02, OP_SIGN_EXT | OP_RN_SP },	/* ldr immediate post/pre index */
 	{ "ldr", "1|SF(1)|11100101|IMM(12)|RN(5)|RT(5)",
@@ -203,15 +197,7 @@ static struct arm64_insn arm64_i[] = {
         { "strh", "0111100100|IMM(12)|RN(5)|RT(5)",
 	    TYPE_02, OP_SF32 | OP_RN_SP }, 	/* strh immediate unsigned */
         { "strh", "01111000001|RM(5)|OPTION(3)|SCALE(1)|10|RN(5)|RT(5)",
-<<<<<<< HEAD
-            TYPE_02, OP_SF32 }, 		/* strh register */
-	{ "sub", "SF(1)|1001011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
-	    TYPE_01, 0 }, 			/* sub shifted register, alias neg shifted register */
-	{ "subs", "SF(1)|1101011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
-	    TYPE_01, 0 }, 			/* subs shifted register, alias cmp/negs shifted register */
-=======
             TYPE_02, OP_SF32 | OP_RN_SP },	/* strh register */
->>>>>>> ca55da6e3484 (arm64/disassem.c: Add xzr/sp detection)
 	{ NULL, NULL }
 };
 
@@ -373,14 +359,14 @@ arm64_x31_reg(int sp)
 static const char *
 arm64_w_reg(int num, int wsp)
 {
-	bool is_w31 = num != 0b11111;
+	bool is_w31 = num == 0b11111;
 	return (is_w31 ? arm64_w31_reg(wsp) : w_reg[num]);
 }
 
 static const char *
 arm64_x_reg(int num, int sp)
 {
-	bool is_x31 = num != 0b11111;
+	bool is_x31 = num == 0b11111;
 	return (is_x31 ? arm64_x31_reg(sp) : x_reg[num]);
 }
 
@@ -413,10 +399,6 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	shift = rd = rm = rn = imm = idx = option = amount = scale = 0;
 	sign_ext = 0;
 	sf = 1;
-	rm_sp = i_ptr->special_ops & OP_RM_SP;
-	rt_sp = i_ptr->special_ops & OP_RT_SP;
-	rd_sp = i_ptr->special_ops & OP_RD_SP;
-	rn_sp = i_ptr->special_ops & OP_RN_SP;
 
 	matchp = 0;
 	insn = di->di_readword(loc);
@@ -450,6 +432,11 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		arm64_disasm_read_token(i_ptr, insn, "IMM", &imm);
 	if (i_ptr->special_ops & OP_MULT_4)
 		imm <<= 2;
+
+	rm_sp = i_ptr->special_ops & OP_RM_SP;
+	rt_sp = i_ptr->special_ops & OP_RT_SP;
+	rd_sp = i_ptr->special_ops & OP_RD_SP;
+	rn_sp = i_ptr->special_ops & OP_RN_SP;
 
 	/* Print opcode by type */
 	switch (i_ptr->type) {
