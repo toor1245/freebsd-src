@@ -345,29 +345,19 @@ arm64_disasm_read_token_sign_ext(struct arm64_insn *insn, u_int opcode,
 }
 
 static const char *
-arm64_w31_reg(int wsp)
-{
-	return (wsp != 0 ? "wsp" : "wzr");
-}
-
-static const char *
-arm64_x31_reg(int sp)
-{
-	return (sp != 0 ? "sp" : "xzr");
-}
-
-static const char *
 arm64_w_reg(int num, int wsp)
 {
-	bool is_w31 = num == 0b11111;
-	return (is_w31 ? arm64_w31_reg(wsp) : w_reg[num]);
+	if (num == 31)
+		return (wsp != 0 ? "wsp" : "wzr");
+	return (w_reg[num]);
 }
 
 static const char *
 arm64_x_reg(int num, int sp)
 {
-	bool is_x31 = num == 0b11111;
-	return (is_x31 ? arm64_x31_reg(sp) : x_reg[num]);
+	if (num == 31)
+		return (sp != 0 ? "sp" : "xzr");
+	return (x_reg[num]);
 }
 
 static const char *
