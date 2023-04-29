@@ -240,3 +240,110 @@ L(copy64_from_start):
 EEND(memmove)
 END(memcpy)
 
+ENTRY(disasm_str_test)
+	/* str immediate post-index */
+	str	w0, [x3], #-256
+	str	w1, [sp], #255
+
+	str	x2, [x4], #1
+	str	x0, [sp], #-1
+
+	/* str immedate pre-index */
+	str	w0, [x3, #-256]!
+	str	w1, [sp, #255]!
+
+	str	x2, [x4, #1]
+	str	x0, [sp, #-1]
+
+	/* str immediate unsigned offset */
+	str	w0, [x3]
+	str	w0, [x3, #16380]
+	str	w1, [sp, #16380]
+
+	str	x0, [x3]
+	str	x2, [x3, #32760]
+	str	x3, [sp, #32760]
+
+	/* str register */
+	str	w0, [x1, x2, lsl #2]
+	str	w0, [x1, w2, uxtw #2]
+	str	w0, [sp, w2, sxtw]
+	str	w0, [sp, x2, sxtx #0]
+
+	str	x0, [x1, x2, lsl #3]
+	str	x0, [x1, w2, uxtw #3]
+	str	x0, [sp, w2, sxtw]
+	str	x0, [sp, x2, sxtx #0]
+
+	/* strb immediate post-index */
+	strb	w0, [x3], #-256
+	strb	w1, [sp], #255
+
+	/* strb immediate pre-index */
+	strb	w0, [x3, #-256]!
+	strb	w1, [sp, #255]!
+
+	/* strb immediate unsigned offset */
+	strb	w0, [x3]
+	strb	w0, [x3, #4095]
+	strb	w1, [sp, #4095]
+
+	/* strb register */
+	strb	w0, [x1, x2, sxtx #0]
+	strb	w0, [x1, x2, lsl #0]
+	strb	w0, [x1, w2, uxtw]
+	strb	w0, [sp, w2, sxtw]
+	strb	w0, [sp, x2, sxtx]
+
+	/* strh immediate post-index */
+	strh	w0, [x3], #-256
+	strh	w1, [sp], #255
+
+	/* strh immediate pre-index */
+	strh	w0, [x3, #-256]!
+	strh	w1, [sp, #255]!
+
+	/* strh immediate unsigned offset */
+	strh	w0, [x3]
+	strh	w0, [x3, #8190]
+	strh	w1, [sp, #8190]
+	
+	/* strh register */
+	strh	w0, [x1, w2, uxtw #1]
+	strh	w0, [x1, x2, lsl #1]
+	strh	w0, [sp, w2, sxtw]
+	strh	w0, [sp, x2, sxtx #0]
+	strh	wzr, [sp, xzr, sxtx #0]
+END(disasm_str_test)
+
+ENTRY(disasm_shifted_reg_with_rsv)
+	/* adds shifted regiser */
+	adds	w0, w1, w3, asr #1
+	adds	x0, x1, x2, lsl #2
+	
+
+	/* cmn shifted register, alias of adds */
+	cmn	w0, w4, lsr #31
+	cmn	x1, x10, asr #63
+
+	/* subs shifted register */
+	subs	w0, w11, w12, lsr #0
+	subs	x1, x12, x11, lsl #63
+
+	/* cmp shifted register, alias of subs */
+	cmp	w0, w1, asr #31
+	cmp	x0, x2, lsl #63
+
+	/* negs shifted register, alias of subs */
+	negs	w0, w1, lsr #31
+	negs	x0, x20, asr #0
+
+	/* sub shifted register */
+	sub	w0, w1, w2, lsl #1
+	sub	x0, x2, x1, lsl #5
+
+	/* neg shifted register */
+	neg	w0, w1, lsl #2
+	neg	x2, x3, asr #8
+	
+END(disasm_shifted_reg_with_rsv)
