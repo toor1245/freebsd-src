@@ -594,7 +594,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 			di->di_printf("%s\t", i_ptr->name);
 
 			if (!rs_absent)
-				di->di_printf("%s, ", arm64_reg_zr(rs));
+				di->di_printf("%s, ", arm64_reg_zr(sf, rs));
 
 			di->di_printf("%s, ",  arm64_reg_zr(sf, rt));
 
