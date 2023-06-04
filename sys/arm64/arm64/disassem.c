@@ -97,9 +97,14 @@ enum arm64_format_type {
 	TYPE_01,
 
 	/*
-	 * OP <RT>, [<RN>, #<imm>]{!} SF32/64
-	 * OP <RT>, [<RN>], #<imm>{!} SF32/64
-	 * OP <RT>, <RN>, <RM> {, EXTEND AMOUNT }
+	 * OP <RT>, [<XN|SP>, #<simm>]!
+	 * OP <RT>, [<XN|SP>], #<simm>
+	 * OP <RT>, [<XN|SP> {, #<pimm> }]
+	 * OP <RT>, [<XN|SP>, <RM> {, EXTEND AMOUNT }]
+	 * OP <RT1>, <RT2>, [<XN|SP>, #<imm>]!
+	 * OP <RT1>, <RT2>, [<XN|SP>], #<imm>
+	 * OP <RT1>, <RT2>, [<XN|SP> {, #<imm> }]
+	 * OP <RS>, <RT1>, <RT2>, [<XN|SP> {, #0 }]
 	 */
 	TYPE_02,
 
@@ -232,6 +237,30 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_01, 0 },			/* negs shifted register */
 	{ "subs", "SF(1)|1101011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
 	    TYPE_01, 0 },			/* subs shifted register */
+	{ "ldp", "SF(1)|010100|OPTION(2)|1|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },
+	    /* ldp pre/post index, signed offset */
+	{ "ldpsw", "0110100|OPTION(2)|1|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },
+	    /* ldpsw pre/post index, signed offset */
+	{ "ldnp", "SF(1)|010100001|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* ldnp signed offset */
+	{ "ldxp", "1|SF(1)|001000011111110|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* ldxp signed offset */
+	{ "ldaxp", "1|SF(1)|001000011111111|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* ldaxp signed offset */
+	{ "stp", "SF(1)|010100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },
+	    /* stp pre/post index, signed offset */
+	{ "stnp", "SF(1)|010100000|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* stnp signed offset */
+	{ "stxp", "1|SF(1)|001000001|RS(5)|0|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* stxp signed offset */
+	{ "stlxp", "1|SF(1)|01000001|RS(5)|1|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* stlxp signed offset */
+	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT1(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },
+	    /* stgp pre/post index, signed offset */
 	{ NULL, NULL }
 };
 
@@ -404,6 +433,24 @@ arm64_reg(int b64, int num, int sp)
 	return (arm64_w_reg(num, sp));
 }
 
+/*
+ * Gets Xn register or SP
+ */
+static const char *
+arm64_x_reg_sp(int num)
+{
+	return (arm64_x_reg(num, 1));
+}
+
+/*
+ * Gets <Wn|Xn> register or <WZR|XZR>
+ */
+static const char *
+arm64_reg_zr(int b64, int num)
+{
+	return (arm64_reg(b64, num, 0));
+}
+
 vm_offset_t
 disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 {
@@ -413,7 +460,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	int ret;
 	int shift, rm, rt, rd, rn, imm, sf, idx, option, scale, amount;
 	int sign_ext;
-	bool rm_absent, rd_absent, rn_absent;
+	bool rm_absent, rd_absent, rn_absent, rs_absent, rt2_absent;
 	/* Indicate if immediate should be outside or inside brackets */
 	int inside;
 	/* Print exclamation mark if pre-incremented */
@@ -513,25 +560,24 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		break;
 	case TYPE_02:
 		/*
-		 * OP <RT>, [<RN>, #<imm>]{!}] SF32/64
-		 * OP <RT>, [<RN>], #<imm>{!} SF32/64
-		 * OP <RT>, <RN>, <RM> {, EXTEND AMOUNT }
+		 * OP <RT>, [<XN|SP>, #<simm>]!
+		 * OP <RT>, [<XN|SP>], #<simm>
+		 * OP <RT>, [<XN|SP> {, #<pimm> }]
+		 * OP <RT>, [<XN|SP>, <RM> {, EXTEND AMOUNT }]
+		 * OP <RT1>, <RT2>, [<XN|SP>, #<imm>]!
+		 * OP <RT1>, <RT2>, [<XN|SP>], #<imm>
+		 * OP <RT1>, <RT2>, [<XN|SP> {, #<imm> }]
+		 * OP <RS>, <RT1>, <RT2>, [<XN|SP> {, #0 }]
 		 */
 
-		/* Mandatory tokens */
-		ret = arm64_disasm_read_token(i_ptr, insn, "RT", &rt);
-		ret |= arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
-		if (ret != 0) {
-			printf("ERROR: "
-			    "Missing mandatory token for op %s type %d\n",
-			    i_ptr->name, i_ptr->type);
-			goto undefined;
-		}
-
-		/* Optional tokens */
+		arm64_disasm_read_token(i_ptr, insn, "RT", &rt);
 		arm64_disasm_read_token(i_ptr, insn, "OPTION", &option);
 		arm64_disasm_read_token(i_ptr, insn, "SCALE", &scale);
+
+		rn_absent = arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
 		rm_absent = arm64_disasm_read_token(i_ptr, insn, "RM", &rm);
+		rs_absent = arm64_disasm_read_token(i_ptr, insn, "RS", &rs);
+		rt2_absent = arm64_disasm_read_token(i_ptr, insn, "RT2", &rt2);
 
 		if (rm_absent) {
 			/*
@@ -543,6 +589,17 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 				    ARM_INSN_SIZE_MASK);
 				option = 0;
 			}
+
+			di->di_printf("%s\t", i_ptr->name);
+
+			if (!rs_absent)
+				di->di_ptintf("%s, ", arm64_reg_zr(rs));
+
+			di->di_printf("%s, ",  arm64_reg_zr(sf, rt));
+
+			if (!rt2_absent)
+				di->di_printf("%s, ", arm64_reg_zr(sf, rt2));
+
 			switch (option) {
 			case 0x0:
 				pre = 0;
@@ -559,15 +616,13 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 				break;
 			}
 
-			di->di_printf("%s\t%s, ", i_ptr->name,
-			    arm64_reg(sf, rt, rt_sp));
 			if (inside != 0) {
-				di->di_printf("[%s", arm64_reg(1, rn, rn_sp));
+				di->di_printf("[%s", arm64_x_reg_sp(rn));
 				if (imm != 0)
 					di->di_printf(", #%d", imm);
 				di->di_printf("]");
 			} else {
-				di->di_printf("[%s]", arm64_reg(1, rn, rn_sp));
+				di->di_printf("[%s]", arm64_x_reg_sp(rn));
 				if (imm != 0)
 					di->di_printf(", #%d", imm);
 			}
@@ -576,7 +631,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		} else {
 			/* Last bit of option field determines 32/64 bit offset */
 			di->di_printf("%s\t%s, [%s, %s", i_ptr->name,
-			    arm64_reg(sf, rt, rt_sp), arm64_reg(1, rn, rn_sp),
+			    arm64_reg(sf, rt, rt_sp), arm64_x_reg_sp(rn),
 			    arm64_reg(option & 1, rm, rm_sp));
 
 			if (scale == 0)
