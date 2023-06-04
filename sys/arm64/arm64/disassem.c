@@ -460,6 +460,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	int ret;
 	int shift, rm, rt, rd, rn, imm, sf, idx, option, scale, amount;
 	int sign_ext;
+	int rs, rt2;
 	bool rm_absent, rd_absent, rn_absent, rs_absent, rt2_absent;
 	/* Indicate if immediate should be outside or inside brackets */
 	int inside;
@@ -593,7 +594,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 			di->di_printf("%s\t", i_ptr->name);
 
 			if (!rs_absent)
-				di->di_ptintf("%s, ", arm64_reg_zr(rs));
+				di->di_printf("%s, ", arm64_reg_zr(rs));
 
 			di->di_printf("%s, ",  arm64_reg_zr(sf, rt));
 
