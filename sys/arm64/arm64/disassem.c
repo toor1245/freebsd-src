@@ -444,7 +444,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	/* Indicate if x31 register should be printed as sp or xzr */
 	int rm_sp, rt_sp, rd_sp, rn_sp;
 	/* Indicate if shift type ror is supported */
-	bool is_shift_ror;
+	bool has_shift_ror;
 
 	/* Initialize defaults, all are 0 except SF indicating 64bit access */
 	shift = rd = rm = rn = imm = idx = option = amount = scale = 0;
@@ -489,7 +489,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	rd_sp = i_ptr->special_ops & OP_RD_SP;
 	rn_sp = i_ptr->special_ops & OP_RN_SP;
 
-	is_shift_ror = i_ptr->special_ops & OP_SHIFT_ROR;
+	has_shift_ror = i_ptr->special_ops & OP_SHIFT_ROR;
 
 	/* Print opcode by type */
 	switch (i_ptr->type) {
@@ -510,7 +510,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		 * if shift type is RESERVED for shifted register instruction,
 		 * print undefined
 		 */
-		if (shift == 4 && !is_shift_ror) {
+		if (shift == 3 && !has_shift_ror)
 			goto undefined;
 		}
 
