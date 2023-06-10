@@ -258,7 +258,7 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_02, 0 },			/* stxp signed offset */
 	{ "stlxp", "1|SF(1)|01000001|RS(5)|1|RT2(5)|RN(5)|RT(5)",
 	    TYPE_02, 0 },			/* stlxp signed offset */
-	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT1(5)|RN(5)|RT(5)",
+	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
 	    TYPE_02, 0 },
 	    /* stgp pre/post index, signed offset */
 	{ NULL, NULL }
