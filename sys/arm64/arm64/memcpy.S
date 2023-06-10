@@ -450,143 +450,153 @@ ENTRY(disasm_shifted_reg_with_ror)
 END(disasm_shifter_reg_with_ror)
 
 
+	.macro STGP_POST_INDEX xt, xt2, xn, simm7
+		.inst 	(0b0110100010 << 22) | (\simm7 << 15) |	\
+			(\xt2 << 10)         | (\xn << 5)     |	\
+			(\xt << 0)
+	.endm
+
 ENTRY(disasm_pair_regs)
 	/* ldp post index */
-	ldp	wzr, wzr, [x3], #-256
+	ldp	wzr, w4, [x3], #-256
 	ldp	w1,  w2,  [sp], #252
-	ldp	w2,  w3,  [sp], #83
+	ldp	w2,  w3,  [sp], #112
 
-	ldp	xzr, xzr, [x3], #-512
+	ldp	xzr, x4, [x3], #-512
 	ldp	x1,  xzr, [sp], #504
-	ldp	x2,  x3,  [sp], #83
+	ldp	x2,  x3,  [sp], #112
 
 	/* ldp pre-index */
-	ldp	wzr, wzr, [x3, #-256]!
+	ldp	wzr, w4, [x3, #-256]!
 	ldp	w1,  wzr, [sp, #252]!
-	ldp	wzr, w2,  [sp, #83]!
+	ldp	wzr, w2,  [sp, #112]!
 
-	ldp	xzr, xzr, [x3, #-512]!
+	ldp	xzr, x4, [x3, #-512]!
 	ldp	x1,  xzr, [sp, #504]!
-	ldp	xzr, x2,  [sp, #83]!
+	ldp	xzr, x2,  [sp, #112]!
 
 	/* ldp signed offset */
-	ldp	wzr, wzr, [x3]
+	ldp	wzr, w4, [x3]
 	ldp	w0,  wzr, [x3, #-256]
 	ldp	wzr, w1,  [sp, #252]
 
-	ldp	xzr, xzr, [x3]
+	ldp	xzr, x4, [x3]
 	ldp	x0,  xzr, [x3, #-512]
 	ldp	xzr, x1,  [sp, #504]
 
 	/* ldpsw post index */
-	ldpsw	xzr, xzr, [x3], #-256
-	ldpsw	x1,  xzr, [sp], #2
-	ldpsw	xzr, x2,  [sp], #83
+	ldpsw	xzr, x4, [x3], #-256
+	ldpsw	x1,  xzr, [sp], #4
+	ldpsw	xzr, x2,  [sp], #112
 
 	/* ldpsw pre-index */
-	ldpsw	xzr, xzr, [x3, #-256]!
+	ldpsw	xzr, x4, [x3, #-256]!
 	ldpsw	x1,  xzr, [sp, #252]!
-	ldpsw	xzr, x2,  [sp, #83]!
+	ldpsw	xzr, x2,  [sp, #112]!
 
 	/* ldpsw signed offset */
-	ldpsw	xzr, xzr, [x3]
+	ldpsw	xzr, x2, [x3]
 	ldpsw	x0,  xzr, [x3, #-256]
 	ldpsw	xzr, x1,  [sp, #252]
 
 	/* ldnp signed offset */
-	ldnp	wzr, wzr, [x3]
+	ldnp	wzr, w1, [x3]
 	ldnp	w0,  wzr, [x3, #-256]
 	ldnp	wzr, w1,  [sp, #252]
 
-	ldnp	xzr, xzr, [x3]
+	ldnp	xzr, x1, [x3]
 	ldnp	x0,  xzr, [x3, #-512]
 	ldnp	xzr, x1,  [sp, #504]
 
 	/* ldxp signed offset */
-	ldxp	wzr, wzr, [x3]
-	ldxp	w0,  wzr, [x3, #0]
-	ldxp	wzr, w1,  [sp, #0]
+	//ldxp	wzr, wzr, [x3]
+	//ldxp	w0,  wzr, [x3, #0]
+	//ldxp	wzr, w1,  [sp, #0]
 
-	ldxp	xzr, xzr, [x3]
-	ldxp	x0,  xzr, [x3, #0]
-	ldxp	xzr, x1,  [sp, #0]
+	//ldxp	xzr, xzr, [x3]
+	//ldxp	x0,  xzr, [x3, #0]
+	//ldxp	xzr, x1,  [sp, #0]
 	
 	/* ldaxp signed offset */
-	ldaxp	wzr, wzr, [x3]
-	ldaxp	w0,  wzr, [x3, #0]
-	ldaxp	wzr, w1,  [sp, #0]
+	//ldaxp	wzr, wzr, [x3]
+	//ldaxp	w0,  wzr, [x3, #0]
+	//ldaxp	wzr, w1,  [sp, #0]
 
-	ldaxp	xzr, xzr, [x3]
-	ldaxp	x0,  xzr, [x3, #0]
-	ldaxp	xzr, x1,  [sp, #0]
+	//ldaxp	xzr, xzr, [x3]
+	//ldaxp	x0,  xzr, [x3, #0]
+	//ldaxp	xzr, x1,  [sp, #0]
 
 	/* stp post index */
-	stp	wzr, wzr, [x3], #-256
+	stp	wzr, w4,  [x3], #-256
 	stp	w1,  w2,  [sp], #252
-	stp	w2,  w3,  [sp], #83 
+	stp	w2,  w3,  [sp], #112
 
 	stp	xzr, xzr, [x3], #-512
 	stp	x1,  xzr, [sp], #504
-	stp	x2,  x3,  [sp], #83
+	stp	x2,  x3,  [sp], #112
 
 	/* stp pre-index */
-	stp	wzr, wzr, [x3, #-256]!
+	stp	wzr, w4,  [x3, #-256]!
 	stp	w1,  wzr, [sp, #252]!
-	stp	wzr, w2,  [sp, #83]!
+	stp	wzr, w2,  [sp, #112]!
 
-	stp	xzr, xzr, [x3, #-512]!
+	stp	xzr, x4,  [x3, #-512]!
 	stp	x1,  xzr, [sp, #504]!
-	stp	xzr, x2,  [sp, #83]!
+	stp	xzr, x2,  [sp, #112]!
 
 	/* stp signed offset */
-	stp	wzr, wzr, [x3]
+	stp	wzr, w4,  [x3]
 	stp	w0,  wzr, [x3, #-256]
 	stp	wzr, w1,  [sp, #252]
 
-	stp	xzr, xzr, [x3]
+	stp	xzr, x4,  [x3]
 	stp	x0,  xzr, [x3, #-512]
 	stp	xzr, x1,  [sp, #504]
 
 	/* stnp signed offset */
-	stnp	wzr, wzr, [x3]
+	stnp	wzr, w4,  [x3]
 	stnp	w0,  wzr, [x3, #-256]
 	stnp	wzr, w1,  [sp, #252]
 
-	stnp	xzr, xzr, [x3]
+	stnp	xzr, x4,  [x3]
 	stnp	x0,  xzr, [x3, #-512]
 	stnp	xzr, x1,  [sp, #504]
 
 	/* stxp signed offset */
-	stxp	w0, wzr, wzr, [x3]
-	stxp	w0, w1,  wzr, [x3, #0]
-	stxp	w0, wzr, w1,  [sp, #0]
+	//stxp	w0, wzr, wzr, [x3]
+	//stxp	w0, w1,  wzr, [x3, #0]
+	//stxp	w0, wzr, w1,  [sp, #0]
 
-	stxp	x0, xzr, xzr, [x3]
-	stxp	x0, x1,  xzr, [x3, #0]
-	stxp	x0, xzr, x1,  [sp, #0]
+	//stxp	x0, xzr, xzr, [x3]
+	//stxp	x0, x1,  xzr, [x3, #0]
+	//stxp	x0, xzr, x1,  [sp, #0]
 
 	/* stlxp signed offset */
-	stlxp	w0, wzr, wzr, [x3]
-	stlxp	w0, w1,  wzr, [x3, #0]
-	stlxp	w0, wzr, w1,  [sp, #0]
+	//stlxp	w0, wzr, wzr, [x3]
+	//stlxp	w0, w1,  wzr, [x3, #0]
+	//stlxp	w0, wzr, w1,  [sp, #0]
 
-	stlxp	x0, xzr, xzr, [x3]
-	stlxp	x0, x1,  xzr, [x3, #0]
-	stlxp	x0, xzr, x1,  [sp, #0]
+	//stlxp	x0, xzr, xzr, [x3]
+	//stlxp	x0, x1,  xzr, [x3, #0]
+	//stlxp	x0, xzr, x1,  [sp, #0]
 
 	/* stgp post index */
-	stgp	xzr, xzr, [x3], #-1024
-	stgp	x1,  xzr, [sp], #1008
-	stgp	x2,  x3,  [sp], #83
+	//stgp	x2, xzr, [x3], #-1024
+	//stgp	x1,  xzr, [sp], #1008
+	//stgp	x2,  x3,  [sp], #112
+
+	STGP_POST_INDEX 2, 31, 3, -64
+	STGP_POST_INDEX 1, 31, 31, 63
+	STGP_POST_INDEX 2, 3, 31, 7
 
 	/* stgp pre-index */
-	stgp	xzr, xzr, [x3, #-1024]!
-	stgp	x1,  xzr, [sp, #1008]!
-	stgp	xzr, x2,  [sp, #83]!
+	//stgp	xzr, xzr, [x3, #-1024]!
+	//stgp	x1,  xzr, [sp, #1008]!
+	//stgp	xzr, x2,  [sp, #112]!
 
 	/* stgp signed offset */
-	stgp	xzr, xzr, [x3]
-	stgp	x0,  xzr, [x3, #-1024]
-	stgp	xzr, x1,  [sp, #1008]
+	//stgp	xzr, xzr, [x3]
+	//stgp	x0,  xzr, [x3, #-1024]
+	//stgp	xzr, x1,  [sp, #1008]
 END(disasm_pair_regs)
 
