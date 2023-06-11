@@ -512,7 +512,6 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		 */
 		if (shift == 3 && !has_shift_ror)
 			goto undefined;
-		}
 
 		di->di_printf("%s\t", i_ptr->name);
 

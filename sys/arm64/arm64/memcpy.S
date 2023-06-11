@@ -317,10 +317,20 @@ ENTRY(disasm_str_test)
 	strh	wzr, [sp, x2, sxtx #0]
 END(disasm_str_test)
 
+.macro ADDS_SHIFT_RSV_64 xd, xn, xm, shift, imm
+	.inst	((0b10101011 << 24) | (\shift << 22) | \
+		(0b0 << 21) 	    | (\xm << 16)    | \
+		(\imm << 10)	    | (\xn << 5)     | \
+		(\xd << 0))
+.endm
+
 ENTRY(disasm_shifted_reg_with_rsv)
 	/* adds shifted regiser */
 	adds	w0, w1, w3, asr #1
 	adds	x0, x1, x2, lsl #2
+
+	# adds	w0, w1, w3, RESERVED #1
+	ADDS_SHIFT_RSV_64 0, 1, 3, 3, 1
 
 	/* cmn shifted register, alias of adds */
 	cmn	w0, w4, lsr #31
