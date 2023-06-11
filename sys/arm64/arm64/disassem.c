@@ -53,6 +53,8 @@ __FBSDID("$FreeBSD$");
 #define	OP_RT_SP	(1UL << 8)	/* Use sp for RT otherwise xzr */
 #define	OP_RN_SP	(1UL << 9)	/* Use sp for RN otherwise xzr */
 #define	OP_RM_SP	(1UL << 10)	/* Use sp for RM otherwise xzr */
+#define	OP_MULT_SCALE	(1UL << 12)	/* Multiply immediate by scale */
+#define	OP_MULT_16	(1UL << 13)	/* Multiply immediate by 16 */
 
 static const char *w_reg[] = {
 	"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7",
@@ -238,28 +240,30 @@ static struct arm64_insn arm64_i[] = {
 	{ "subs", "SF(1)|1101011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
 	    TYPE_01, 0 },			/* subs shifted register */
 	{ "ldp", "SF(1)|010100|OPTION(2)|1|IMM(7)|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
 	    /* ldp pre/post index, signed offset */
 	{ "ldpsw", "0110100|OPTION(2)|1|IMM(7)|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
 	    /* ldpsw pre/post index, signed offset */
 	{ "ldnp", "SF(1)|010100001|IMM(7)|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* ldnp signed offset */
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
+	    /* ldnp signed offset */
 	{ "ldxp", "1|SF(1)|001000011111110|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* ldxp signed offset */
+	    TYPE_02, 0 },			/* ldxp, #0 offset */
 	{ "ldaxp", "1|SF(1)|001000011111111|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* ldaxp signed offset */
+	    TYPE_02, 0 },			/* ldaxp, #0 offset */
 	{ "stp", "SF(1)|010100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },
+	    TYPE_02, OP_SIGNE_EXT | OP_MULT_SCALE },
 	    /* stp pre/post index, signed offset */
 	{ "stnp", "SF(1)|010100000|IMM(7)|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* stnp signed offset */
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
+	    /* stnp signed offset */
 	{ "stxp", "1|SF(1)|001000001|RS(5)|0|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* stxp signed offset */
+	    TYPE_02, 0 },			/* stxp, #0 offset */
 	{ "stlxp", "1|SF(1)|01000001|RS(5)|1|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* stlxp signed offset */
-	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },
+	    TYPE_02, 0 },			/* stlxp, #0 offset */
+	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT1(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT },
 	    /* stgp pre/post index, signed offset */
 	{ NULL, NULL }
 };
@@ -468,6 +472,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	int pre;
 	/* Indicate if x31 register should be printed as sp or xzr */
 	int rm_sp, rt_sp, rd_sp, rn_sp;
+	bool has_mult_scale;
 
 	/* Initialize defaults, all are 0 except SF indicating 64bit access */
 	shift = rd = rm = rn = imm = idx = option = amount = scale = 0;
@@ -506,6 +511,10 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		arm64_disasm_read_token(i_ptr, insn, "IMM", &imm);
 	if (i_ptr->special_ops & OP_MULT_4)
 		imm <<= 2;
+	if (i_ptr->special_ops & OP_MULT_16)
+		imm <<= 4;
+
+	has_mult_scale = i_ptr->special_ops & OP_MULT_SCALE;
 
 	rm_sp = i_ptr->special_ops & OP_RM_SP;
 	rt_sp = i_ptr->special_ops & OP_RT_SP;
@@ -590,6 +599,17 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 				    ARM_INSN_SIZE_MASK);
 				option = 0;
 			}
+
+			/*
+			 * In store/load pair registers instruction,
+			 * shift immediate value to 2 + SF (opc<1>).
+			 * - If SF is 0, we use 32-bit access
+			 *   and multiply by 4.
+			 * - If SF is 1, we use 64-bit access
+			 *   and multiply by 8.
+			 */
+			if (has_mult_scale)
+				imm <<= 2 + sf;
 
 			di->di_printf("%s\t", i_ptr->name);
 
