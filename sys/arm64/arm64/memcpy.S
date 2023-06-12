@@ -585,7 +585,7 @@ ENTRY(disasm_pair_regs)
 	//stgp	x1,  xzr, [sp], #1008
 	//stgp	x2,  x3,  [sp], #112
 
-	STGP_POST_INDEX 2, 31, 3, -64
+	STGP_POST_INDEX 2, 31, 3, 0b1000000
 	STGP_POST_INDEX 1, 31, 31, 63
 	STGP_POST_INDEX 2, 3, 31, 7
 
