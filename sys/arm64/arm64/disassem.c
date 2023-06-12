@@ -709,7 +709,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		goto undefined;
 	}
 
-	di->di_printf("\n");
+	di->di_printf("\t%08x\n", insn);
 	return (loc + INSN_SIZE);
 
 undefined:
