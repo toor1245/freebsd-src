@@ -601,8 +601,8 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 			}
 
 			/*
-			 * In store/load pair registers instruction,
-			 * shift immediate value to 2 + SF (opc<1>).
+			 * If store/load pair registers instruction and has 
+			 * OP_MULT_SCALE, shift <imm> value to 2 + SF (opc<1>).
 			 * - If SF is 0, we use 32-bit access
 			 *   and multiply by 4.
 			 * - If SF is 1, we use 64-bit access
