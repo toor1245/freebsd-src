@@ -449,11 +449,50 @@ ENTRY(disasm_shifted_reg_with_ror)
 	tst	x0, xzr, lsl #1
 END(disasm_shifter_reg_with_ror)
 
-
 	.macro STGP_POST_INDEX xt, xt2, xn, simm7
 		.inst 	(0b0110100010 << 22) | (\simm7 << 15) |	\
 			(\xt2 << 10)         | (\xn << 5)     |	\
 			(\xt << 0)
+	.endm
+
+	.macro STGP_PRE_INDEX xt, xt2, xn, simm7
+		.inst 	(0b0110100110 << 22) | (\simm7 << 15) |	\
+			(\xt2 << 10)         | (\xn << 5)     |	\
+			(\xt << 0)
+	.endm
+
+	.macro STGP_SIGNED_OFFSET xt, xt2, xn, simm7
+		.inst 	(0b0110100100 << 22) | (\simm7 << 15) |	\
+			(\xt2 << 10)         | (\xn << 5)     |	\
+			(\xt << 0)
+	.endm
+
+	.macro LDXP_SIGNED_OFFSET sz, rt, rt2, rn
+		.inst	(0b1 << 31) 		  | (\sz << 30)  | \
+			(0b001000011111110 << 21) | (\rt2 << 10) | \
+			(\rn << 5)		  | (\rt << 0)
+	.endm
+
+	.macro LDXP_SIGNED_OFFSET_64 xt, xt2, xn
+		LDXP_SIGNED_OFFSET 1, \xt, \xt2, \xn
+	.endm
+
+	.macro LDXP_SIGNED_OFFSET_32 wt, wt2, wn
+		LDXP_SIGNED_OFFSET 0, \wt, \wt2, \wn
+	.endm
+
+	.macro LDAXP_SIGNED_OFFSET sz, rt, rt2, rn
+		.inst	(0b1 << 31) 		  | (\sz << 30)  | \
+			(0b001000011111111 << 21) | (\rt2 << 10) | \
+			(\rn << 5)		  | (\rt << 0)
+	.endm
+
+	.macro LDAXP_SIGNED_OFFSET_64 xt, xt2, xn
+		LDAXP_SIGNED_OFFSET 1, \xt, \xt2, \xn
+	.endm
+
+	.macro LDAXP_SIGNED_OFFSET_32 wt, wt2, wn
+		LDAXP_SIGNED_OFFSET 0, \wt, \wt2, \wn
 	.endm
 
 ENTRY(disasm_pair_regs)
@@ -509,22 +548,44 @@ ENTRY(disasm_pair_regs)
 	ldnp	xzr, x1,  [sp, #504]
 
 	/* ldxp signed offset */
-	//ldxp	wzr, wzr, [x3]
-	//ldxp	w0,  wzr, [x3, #0]
-	//ldxp	wzr, w1,  [sp, #0]
+	
+	ldxp	w1,  wzr, [x3]
+	//LDXP_SIGNED_OFFSET_32 1, 31, 3
 
-	//ldxp	xzr, xzr, [x3]
-	//ldxp	x0,  xzr, [x3, #0]
-	//ldxp	xzr, x1,  [sp, #0]
+	ldxp	wzr, w0,  [x3]
+	//LDXP_SIGNED_OFFSET_32 31, 0, 3
+
+	ldxp	wzr, w1,  [sp]
+	//LDXP_SIGNED_OFFSET_32 31, 1, 31
+
+	ldxp	x1,  xzr, [x3]
+	//LDXP_SIGNED_OFFSET_64 1, 31, 3 
+
+	ldxp	xzr, x0,  [x3]
+	//LDXP_SIGNED_OFFSET_64 1, 31, 3
+
+	ldxp	xzr, x1,  [sp]
+	//LDXP_SIGNED_OFFSET_64 31, 1, 31
 	
 	/* ldaxp signed offset */
-	//ldaxp	wzr, wzr, [x3]
-	//ldaxp	w0,  wzr, [x3, #0]
-	//ldaxp	wzr, w1,  [sp, #0]
 
-	//ldaxp	xzr, xzr, [x3]
-	//ldaxp	x0,  xzr, [x3, #0]
-	//ldaxp	xzr, x1,  [sp, #0]
+	ldaxp	wzr, w1, [x3]
+	//LDAXP_SIGNED_OFFSET_32 31, 1, 3
+ 
+	ldaxp	w0,  wzr, [x3]
+	#LDAXP_SIGNED_OFFSET_32 0, 31, 3
+
+	ldaxp	wzr, w1,  [sp]
+	#LDAXP_SIGNED_OFFSET_32 31, 1, 31
+
+	ldaxp	xzr, x5, [x3]
+	#LDAXP_SIGNED_OFFSET_64 31, 5, 3
+
+	ldaxp	x0,  xzr, [x3]
+	#LDAXP_SIGNED_OFFSET_64 0, 31, 3
+
+	ldaxp	xzr, x1,  [sp]
+	#LDAXP_SIGNED_OFFSET_64 31, 1, 31
 
 	/* stp post index */
 	stp	wzr, w4,  [x3], #-256
@@ -563,40 +624,54 @@ ENTRY(disasm_pair_regs)
 	stnp	xzr, x1,  [sp, #504]
 
 	/* stxp signed offset */
-	//stxp	w0, wzr, wzr, [x3]
-	//stxp	w0, w1,  wzr, [x3, #0]
-	//stxp	w0, wzr, w1,  [sp, #0]
+	stxp	w0, wzr, w1,  [x3]
+	stxp	w0, w1,  wzr, [x3]
+	stxp	w0, wzr, w1,  [sp]
 
-	//stxp	x0, xzr, xzr, [x3]
-	//stxp	x0, x1,  xzr, [x3, #0]
-	//stxp	x0, xzr, x1,  [sp, #0]
+	stxp	w0, xzr, x1,  [x3]
+	stxp	w0, x1,  xzr, [x3, #0]
+	stxp	w0, xzr, x1,  [sp, #0]
 
 	/* stlxp signed offset */
-	//stlxp	w0, wzr, wzr, [x3]
-	//stlxp	w0, w1,  wzr, [x3, #0]
-	//stlxp	w0, wzr, w1,  [sp, #0]
+	stlxp	w0, wzr, w2,  [x3]
+	stlxp	w0, w1,  wzr, [x3, #0]
+	stlxp	w0, wzr, w1,  [sp, #0]
 
-	//stlxp	x0, xzr, xzr, [x3]
-	//stlxp	x0, x1,  xzr, [x3, #0]
-	//stlxp	x0, xzr, x1,  [sp, #0]
+	stlxp	w0, xzr, xzr, [x3]
+	stlxp	w0, x1,  xzr, [x3, #0]
+	stlxp	w0, xzr, x1,  [sp, #0]
 
 	/* stgp post index */
-	//stgp	x2, xzr, [x3], #-1024
-	//stgp	x1,  xzr, [sp], #1008
-	//stgp	x2,  x3,  [sp], #112
-
+	
+	# stgp	x2, xzr, [x3], #-1024
 	STGP_POST_INDEX 2, 31, 3, 0b1000000
+
+	# stgp	x1, xzr, [sp], #1008
 	STGP_POST_INDEX 1, 31, 31, 63
+
+	# stgp	x2, x3,  [sp], #112
 	STGP_POST_INDEX 2, 3, 31, 7
 
 	/* stgp pre-index */
-	//stgp	xzr, xzr, [x3, #-1024]!
-	//stgp	x1,  xzr, [sp, #1008]!
-	//stgp	xzr, x2,  [sp, #112]!
+
+	# stgp	x2, xzr, [x3, #-1024]!
+	STGP_PRE_INDEX 2, 31, 3, 0b1000000
+
+	# stgp	x1, xzr, [sp, #1008]!
+	STGP_PRE_INDEX 1, 31, 31, 63
+
+	# stgp	xzr, x2, [sp, #112]!
+	STGP_PRE_INDEX 31, 2, 31, 7
 
 	/* stgp signed offset */
-	//stgp	xzr, xzr, [x3]
-	//stgp	x0,  xzr, [x3, #-1024]
-	//stgp	xzr, x1,  [sp, #1008]
+
+	# stgp	x5, xzr, [x3]
+	STGP_SIGNED_OFFSET 5, 31, 3, 0
+
+	# stgp	x0,  xzr, [x3, #-1024]
+	STGP_SIGNED_OFFSET 0, 31, 3, 0b1000000	
+
+	# stgp	xzr, x1,  [sp, #1008]
+	STGP_SIGNED_OFFSET 31, 1, 31, 63
 END(disasm_pair_regs)
 
