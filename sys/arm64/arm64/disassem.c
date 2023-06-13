@@ -260,7 +260,7 @@ static struct arm64_insn arm64_i[] = {
 	    /* stp pre/post index, signed offset */
 	{ "stxp", "1|SF(1)|001000001|RS(5)|0|RT2(5)|RN(5)|RT(5)",
 	    TYPE_02, 0 },			/* stxp, #0 offset */
-	{ "stlxp", "1|SF(1)|01000001|RS(5)|1|RT2(5)|RN(5)|RT(5)",
+	{ "stlxp", "1|SF(1)|001000001|RS(5)|1|RT2(5)|RN(5)|RT(5)",
 	    TYPE_02, 0 },			/* stlxp, #0 offset */
 	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
 	    TYPE_02, OP_SIGN_EXT | OP_MULT_16 },
