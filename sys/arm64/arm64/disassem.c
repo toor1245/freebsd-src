@@ -480,18 +480,11 @@ arm64_reg(int b64, int num, int sp)
 	return (arm64_w_reg(num, sp));
 }
 
-/* Gets <Wn> register or WZR */
+/* Gets <Wn> register or <WZR> */
 static const char *
 arm64_w_reg_wzr(int num)
 {
 	return (arm64_w_reg(num, 0));
-}
-
-/* Gets <Xn|Wn> register or <WZR|XZR> */
-static const char *
-arm64_reg_zr(int b64, int num)
-{
-	return (arm64_reg(b64, num, 0));
 }
 
 /* Gets <Xn|Wn> register or <WSP|SP> */
@@ -752,7 +745,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		arm64_disasm_read_token(i_ptr, insn, "OPTION", &option);
 
 		rd_absent = arm64_disasm_read_token(i_ptr, insn, "RD", &rd);
-		extend = arm64_disasm_extend_reg(sf, option, rd, rn, imm);
+		extend = arm64_disasm_reg_extend(sf, option, rd, rn, imm);
 
 		di->di_printf("%s\t", i_ptr->name);
 
