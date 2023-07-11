@@ -447,15 +447,6 @@ arm64_disasm_reg_extend(int b64, int option, int rd, int rn, int amount)
 	return (extend_regs[option]);
 }
 
-/* Gets register width W or X from OPTION(3) */
-static const char *
-arm64_disasm_reg_width(int option)
-{
-	if (option == 3 || option == 7)
-		return ("x");
-	return ("w");
-}
-
 static const char *
 arm64_w_reg(int num, int wsp)
 {
@@ -487,11 +478,30 @@ arm64_w_reg_wzr(int num)
 	return (arm64_w_reg(num, 0));
 }
 
+/* Gets <Xn> register or <XZR> */
+static const char *
+arm64_x_reg_xzr(int num)
+{
+	return (arm64_x_reg(num, 0));
+}
+
 /* Gets <Xn|Wn> register or <WSP|SP> */
 static const char *
 arm64_reg_sp(int b64, int num)
 {
 	return (arm64_reg(b64, num, 1));
+}
+
+/*
+ * Decodes OPTION(3) to get <Xn|Wn> register or <WZR|XZR>
+ * for extended register instruction.
+ */
+static const char *
+arm64_disasm_reg_width(int option)
+{
+	if (option == 3 || option == 7)
+		return (arm64_x_reg_xzr(option));
+	return (arm64_w_reg_wzr(option));
 }
 
 vm_offset_t
@@ -755,8 +765,8 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		di->di_printf("%s, ", arm64_reg_sp(sf, rn));
 
 		if (sf != 0)
-			di->di_printf("%s%d",
-			    arm64_disasm_reg_width(option), rm);
+			di->di_printf("%s",
+			    arm64_disasm_reg_width(option));
 		else
 			di->di_printf("%s", arm64_w_reg_wzr(rm));
 
