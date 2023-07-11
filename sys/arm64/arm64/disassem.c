@@ -427,13 +427,13 @@ arm64_disasm_read_token_sign_ext(struct arm64_insn *insn, u_int opcode,
 }
 
 static const char *
-arm64_disasm_reg_extend(int b64, int option, int rd, int rn, int amount)
+arm64_disasm_reg_extend(int sf, int option, int rd, int rn, int amount)
 {
 	bool is_sp, lsl_preferred_uxtw, lsl_preferred_uxtx, lsl_preferred;
 
 	is_sp = rd == 31 || rn == 31;
-	lsl_preferred_uxtw = b64 == 0 && option == 2;
-	lsl_preferred_uxtx = b64 == 1 && option == 3;
+	lsl_preferred_uxtw = sf == 0 && option == 2;
+	lsl_preferred_uxtx = sf == 1 && option == 3;
 	lsl_preferred = is_sp && (lsl_preferred_uxtw || lsl_preferred_uxtx);
 
 	/*
@@ -497,11 +497,11 @@ arm64_reg_sp(int b64, int num)
  * for extended register instruction.
  */
 static const char *
-arm64_disasm_reg_width(int option)
+arm64_disasm_reg_width(int option, int reg)
 {
 	if (option == 3 || option == 7)
-		return (arm64_x_reg_xzr(option));
-	return (arm64_w_reg_wzr(option));
+		return (arm64_x_reg_xzr(reg));
+	return (arm64_w_reg_wzr(reg));
 }
 
 vm_offset_t
@@ -766,7 +766,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 
 		if (sf != 0)
 			di->di_printf("%s",
-			    arm64_disasm_reg_width(option));
+			    arm64_disasm_reg_width(option, rm));
 		else
 			di->di_printf("%s", arm64_w_reg_wzr(rm));
 
