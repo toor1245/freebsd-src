@@ -258,7 +258,7 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_01, OP_SHIFT_ROR },		/* eon shifted register */
 	{ "eor", "SF(1)|1001010|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
 	    TYPE_01, OP_SHIFT_ROR },		/* eor shifted register */
-	{ "orr", "SF(1)|01100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|RD(5)"
+	{ "orr", "SF(1)|01100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|RD(5)",
 	    TYPE_05, OP_RD_SP },
 	    /* orr (bitmask immediate) and mov (bitmask immediate) alias */
 	{ "tst", "SF(1)|11100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|11111",
@@ -458,7 +458,7 @@ arm64_replicate(uint64_t value, uint32_t esize, int bit_count)
 
 	result = value;
 
-	for (set_bits = value; set_bits < bit_count, set_bits += esize) {
+	for (set_bits = value; set_bits < bit_count; set_bits += esize) {
 		value <<= esize;
 		result |= value;
 	}
@@ -552,12 +552,12 @@ arm64_disasm_move_wide_preferred(int sf, uint32_t immn, uint32_t imms,
 	/* For MOVZ, imms must contain no more than 16 ones */
 	if (imms < 16)
 		/* Ones must not span halfword boundary when rotated */
-		return (-immr % 16 < 15 - imms);
+		return (-immr % 16 <= 15 - imms);
 
 	/* For MOVZ, imms must contain no more than 16 zeros */
 	if (imms >= width - 15)
 		/* Zeros must not span halfword boundary when rotated */
-		return (immr % 16 <= s - width - 15);
+		return (immr % 16 <= imms - width - 15);
 
 	return (false);
 }
@@ -608,6 +608,10 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	bool has_shift_ror;
 	/* Indicate if bitmask is decoded or print undefined */
 	bool is_bitmask_decoded;
+	/*
+	 * Indicate if mov (bitmask immediate) preferred than orr (immediate)
+	 */
+	bool mov_bitmask_preferred_orr;
 
 	/* Initialize defaults, all are 0 except SF indicating 64bit access */
 	wmask = 0;
@@ -615,6 +619,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	sign_ext = 0;
 	immr = imms = n = 0;
 	sf = 1;
+	mov_bitmask_preferred_orr = is_bitmask_decoded = false;
 
 	matchp = 0;
 	insn = di->di_readword(loc);
@@ -836,7 +841,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		 * OP <RN>, #<imm>
 		 */
 
-		arm64_disasm_read_token(i_ptr, insn, "RD", &rd);
+		rd_absent = arm64_disasm_read_token(i_ptr, insn, "RD", &rd);
 		arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
 		arm64_disasm_read_token(i_ptr, insn, "N", &n);
 		arm64_disasm_read_token(i_ptr, insn, "IMMR", &immr);
@@ -851,16 +856,22 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		if (!is_bitmask_decoded)
 			goto undefined;
 
-		if (strcmp(i_ptr->name, "orr") == 0 && rn == 31 &&
-		    !arm64_disasm_move_wide_preferred(sf, n, imms, immr))
+		mov_bitmask_preferred_orr = strcmp(i_ptr->name, "orr") == 0
+		    && rn == 31
+		    && !arm64_disasm_move_wide_preferred(sf, n, imms, immr);
+
+		if (mov_bitmask_preferred_orr)
 			di->di_printf("%s\t", "mov");
 		else
 			di->di_printf("%s\t", i_ptr->name);
 
 		if (!rd_absent)
-			di->di_ptrinf("%s", arm64_reg(sf, rd, rd_sp));
+			di->di_printf("%s, ", arm64_reg(sf, rd, rd_sp));
 
-		di->di_printf("%s, #%llu", arm64_reg(sf, rn, 0), wmask);
+		if (!mov_bitmask_preferred_orr)
+			di->di_printf("%s, ", arm64_reg(sf, rn, 0));
+
+		di->di_printf("#0x%lx", wmask);
 
 		break;
 	default:
