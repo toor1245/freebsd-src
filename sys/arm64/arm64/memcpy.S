@@ -448,3 +448,61 @@ ENTRY(disasm_shifted_reg_with_ror)
 	tst	w0, wzr, asr #2
 	tst	x0, xzr, lsl #1
 END(disasm_shifter_reg_with_ror)
+
+
+ENTRY(disasm_bitmask_imm)
+
+	/* orr (bitmask immediate) */
+	orr	wsp, wzr, #0x0000000000f00000
+	orr	wsp, w1,  #0x0000000000f00000
+	orr	w2,  w1,  #0x0000000000f00000
+
+
+	orr	sp, xzr, #0x0001000100010001
+	orr	sp, x1, #0xfffffffffbffffff
+	orr	x2, x1, #0xfffffffffbffffff
+
+	/* mov (bitmask immediate) */
+	mov	wsp, #0x0000000000f00000
+	mov	w1,  #0x0000000000f00000
+	mov	wzr, #0x0000000000f00000
+
+	mov	sp,  #0x0001000100010001
+	mov	x1,  #0x0000000000f00000
+	mov	xzr, #0x0000000000f00000
+
+	/* ands (bitmask immediate) */
+	ands	wzr, wzr, #0x0000000000f00000
+	ands	w1,  w1, #0x0000000000f00000
+	ands	w2,  wzr, #0x0000000000f00000
+
+	ands	xzr, xzr, #0xfffffffffbffffff
+	ands	x2,  x1, #0xfffffffffbffffff
+	ands	x2,  xzr, #0xfffffffffbffffff
+
+	/* tst (bitmask immediate) */
+	tst	wzr,  #0x0000000000f00000
+	tst	w9, #0x0000000000f00000
+
+	tst	xzr, #0xfffffffffbffffff
+	tst	x9, #0xfffffffffbffffff
+
+	/* and (bitmask immediate) */
+	and	wsp, wzr,  #0x0000000000f00000
+	and	wsp, w1, #0x0000000000f00000
+	and	w2,  wzr,  #0x0000000000f00000
+
+	and	sp, xzr, #0xfffffffffbffffff
+	and	sp, x1, #0xfffffffffbffffff
+	and	x2, xzr, #0xfffffffffbffffff
+
+	/* eoe (bitmask immediate) */
+	eor	wsp, wzr, #0x0000000000f00000
+	eor	wsp, w1, #0x0000000000f00000
+	eor	w2,  wzr,  #0x0000000000f00000
+
+	eor	sp, xzr, #0xfffffffffbffffff
+	eor	sp, x1, #0xfffffffffbffffff
+	eor	x2, xzr, #0xfffffffffbffffff
+END(disasm_bitmask_imm)
+
