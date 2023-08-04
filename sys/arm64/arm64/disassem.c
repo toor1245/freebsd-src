@@ -457,21 +457,6 @@ arm64_is_bit_set(uint64_t value, uint32_t bit)
 }
 
 /*
- * Returns the highest set bit of `value`, search performs from
- * most significant bit. If highest set bit is not found, we return -1.
- */
-static int
-arm64_highest_set_bit(uint64_t value)
-{
-	for (int i = sizeof(uint64_t) * CHAR_BIT - 1; i >= 0; i--) {
-		if (arm64_is_bit_set(value, i))
-			return (i);
-	}
-
-	return (-1);
-}
-
-/*
  * Creates a 64 bit value with a specified number of ones starting from lsb.
  *
  * Example:
@@ -547,12 +532,7 @@ arm64_disasm_bit_masks(uint32_t n, uint32_t imms, uint32_t immr,
 	uint32_t levels, s, r;
 	int length, esize;
 
-	/*
-	 * Finds the highest set bit of immN:NOT(imms).
-	 * Total bit count of immN(1) and imms(6) is 7,
-	 * thus we start from 6 index.
-	 */
-	length = arm64_highest_set_bit((n << 6) | (~imms & 0x3F));
+	length = flsl((n << 6) | (~imms & 0x3F));
 
 	if (length < 1)
 		return (false);
@@ -612,7 +592,7 @@ arm64_move_wide_preferred(int sf, uint32_t immn, uint32_t imms,
 	 */
 	if (sf == 1 && immn != 1)
 		return (false);
-	if (sf == 0 && (immn != 0 || arm64_is_bit_set(imms, 6)))
+	if (sf == 0 && (immn != 0 || arm64_is_bit_set(imms, 5)))
 		return (false);
 
 	/* For MOVZ, imms must contain no more than 16 ones */
