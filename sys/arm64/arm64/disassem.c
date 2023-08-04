@@ -532,7 +532,8 @@ arm64_disasm_bit_masks(uint32_t n, uint32_t imms, uint32_t immr,
 	uint32_t levels, s, r;
 	int length, esize;
 
-	length = flsl((n << 6) | (~imms & 0x3F));
+	/* Finds index of the highest bit set */
+	length = flsl((n << 6) | (~imms & 0x3F)) - 1;
 
 	if (length < 1)
 		return (false);
