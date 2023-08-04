@@ -30,7 +30,6 @@
 __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
-#include <sys/limits.h>
 #include <sys/systm.h>
 
 #include <machine/armreg.h>
@@ -458,21 +457,6 @@ arm64_is_bit_set(uint64_t value, uint32_t bit)
 }
 
 /*
- * Returns the highest set bit of `value`, search performs from
- * most significant bit. If highest set bit is not found, we return -1.
- */
-static int
-arm64_highest_set_bit(uint64_t value)
-{
-	for (int i = sizeof(uint64_t) * CHAR_BIT - 1; i >= 0; i--) {
-		if (arm64_is_bit_set(value, i))
-			return (i);
-	}
-
-	return (-1);
-}
-
-/*
  * Creates a 64 bit value with a specified number of ones starting from lsb.
  *
  * Example:
@@ -542,7 +526,7 @@ arm64_ror(uint64_t value, uint32_t shift_count, uint32_t width)
  *
  * Explanation:
  * 	Since AArch64 is a fixed-width instruction set of 32-bits,
- * 	we must use IMMR, IMMS and N to decode 64-bits value.
+ * 	we must use IMMR, IMMS and N to decode 32/64 bits value.
  *
  *	N(1 bit)     - defines 64 bit pattern or not.
  *	IMMS(6 bits) - defines pattern size and number of ones in pattern.
@@ -563,7 +547,7 @@ arm64_ror(uint64_t value, uint32_t shift_count, uint32_t width)
  *	------------------------------------------------
  *
  * Example:
- * 	IMMR = 0b000010, IMMS = 0b100101 and N = 0, IMMS matches
+ * 	SF = 1, IMMR = 0b000010, IMMS = 0b100101 and N = 0, IMMS matches
  * 	to 10xxxx, it means element size is 16 bits and
  * 	number of ones is 5 (0b0101) + 1. Hence value in binary
  * 	representation will be like this:
@@ -581,14 +565,17 @@ arm64_ror(uint64_t value, uint32_t shift_count, uint32_t width)
  *	15 1100000000001111 0
  */
 static bool
-arm64_disasm_bitmask(uint32_t n, uint32_t imms, uint32_t immr,
+arm64_disasm_bitmask(int sf, uint32_t n, uint32_t imms, uint32_t immr,
     bool logical_imm, uint64_t *wmask)
 {
 	uint64_t welem;
 	uint32_t levels, s, r;
-	int length, esize;
+	int width, length, esize;
 
-	length = arm64_highest_set_bit((n << 6) | (~imms & 0x3F));
+	width = sf == 1 ? 64 : 32;
+
+	/* Finds index of the highest bit set */
+	length = flsl((n << 6) | (~imms & 0x3F)) - 1;
 
 	if (length < 1)
 		return (false);
@@ -608,7 +595,7 @@ arm64_disasm_bitmask(uint32_t n, uint32_t imms, uint32_t immr,
 	esize = 1 << length;
 	welem = arm64_ones(s + 1);
 	*wmask = arm64_ror(welem, r, esize);
-	*wmask = arm64_replicate(*wmask, esize, sizeof(uint64_t) * CHAR_BIT);
+	*wmask = arm64_replicate(*wmask, esize, width);
 
 	return (true);
 }
@@ -648,7 +635,7 @@ arm64_move_wide_preferred(int sf, uint32_t immn, uint32_t imms,
 	 */
 	if (sf == 1 && immn != 1)
 		return (false);
-	if (sf == 0 && (immn != 0 || arm64_is_bit_set(imms, 6)))
+	if (sf == 0 && (immn != 0 || arm64_is_bit_set(imms, 5)))
 		return (false);
 
 	/* For MOVZ, imms must contain no more than 16 ones */
@@ -1021,7 +1008,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		if (sf == 0 && n != 0)
 			goto undefined;
 
-		is_bitmask_decoded = arm64_disasm_bitmask(n, imms, immr,
+		is_bitmask_decoded = arm64_disasm_bitmask(sf, n, imms, immr,
 		    true, &wmask);
 
 		if (!is_bitmask_decoded)
