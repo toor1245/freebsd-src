@@ -54,6 +54,7 @@
 #define	OP_SHIFT_ROR	(1UL << 11)	/* Use ror shift type */
 #define	OP_MULT_SCALE	(1UL << 12)	/* Multiply immediate by scale */
 #define	OP_MULT_16	(1UL << 13)	/* Multiply immediate by 16 */
+#define	OP_SIGN_OFF	(1UL << 14)	/* Use addr mode signed offset */
 
 static const char *w_reg[] = {
 	"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7",
@@ -297,9 +298,9 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_02, OP_SIGN_EXT | OP_MULT_4 },
 	    /* ldpsw pre/post index, signed offset */
 	{ "ldxp", "1|SF(1)|001000011111110|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* ldxp, #0 offset */
+	    TYPE_02, OP_SIGN_OFF },			/* ldxp, #0 offset */
 	{ "ldaxp", "1|SF(1)|001000011111111|RT2(5)|RN(5)|RT(5)",
-	    TYPE_02, 0 },			/* ldaxp, #0 offset */
+	    TYPE_02, OP_SIGN_OFF },			/* ldaxp, #0 offset */
 	{ "stnp", "SF(1)|010100000|IMM(7)|RT2(5)|RN(5)|RT(5)",
 	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
 	    /* stnp signed offset */
@@ -691,12 +692,12 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 			di->di_printf("%s\t", i_ptr->name);
 
 			if (!rs_absent)
-				di->di_printf("%s, ", arm64_reg_zr(sf, rs));
+				di->di_printf("%s, ", arm64_reg(sf, rs, 0));
 
-			di->di_printf("%s, ",  arm64_reg_zr(sf, rt));
+			di->di_printf("%s, ", arm64_reg(sf, rt, 0));
 
 			if (!rt2_absent)
-				di->di_printf("%s, ", arm64_reg_zr(sf, rt2));
+				di->di_printf("%s, ", arm64_reg(sf, rt2, 0));
 
 			switch (option) {
 			case 0x0:
