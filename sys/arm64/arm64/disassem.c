@@ -54,6 +54,7 @@ __FBSDID("$FreeBSD$");
 #define	OP_RN_SP	(1UL << 9)	/* Use sp for RN otherwise xzr */
 #define	OP_RM_SP	(1UL << 10)	/* Use sp for RM otherwise xzr */
 #define	OP_SHIFT_ROR	(1UL << 11)	/* Use ror shift type */
+#define OP_ADDR_OFF	(1UL << 12)	/* Use address mode offset */
 
 static const char *w_reg[] = {
 	"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7",
@@ -239,6 +240,13 @@ static struct arm64_insn arm64_i[] = {
 	{ "strh", "01111000001|RM(5)|OPTION(3)|SCALE(1)|10|RN(5)|RT(5)",
 	    TYPE_02, OP_SF32 },
 	    /* strh register */
+	{ "stllr", "1|SF(1)|00100010011111011111|RN(5)|RT(5)",
+	    TYPE_02, OP_ADDR_OFF },
+	{ "stllrb", "0000100010011111011111|RN(5)|RT(5)",
+	    TYPE_02, OP_SF32 | OP_ADDR_OFF },
+	{ "stllrh", "0100100010011111011111|RN(5)|RT(5)",
+	    TYPE_02, OP_SF32 | OP_ADDR_OFF },
+	{ "stlr", "1|" },
 	{ "neg", "SF(1)|1001011|SHIFT(2)|0|RM(5)|IMM(6)|11111|RD(5)",
 	    TYPE_01, 0 },			/* neg shifted register */
 	{ "sub", "SF(1)|1001011|SHIFT(2)|0|RM(5)|IMM(6)|RN(5)|RD(5)",
