@@ -11,6 +11,8 @@
  *
  */
 
+# .arch_extension crc
+
 #include <machine/asm.h>
 
 #define L(l) .L ## l
@@ -240,3 +242,443 @@ L(copy64_from_start):
 END(memcpy)
 EEND(memmove)
 
+ENTRY(disasm_str_test)
+	/* str immediate post-index */
+	str	w0, [x3], #-256
+	str	w1, [sp], #255
+
+	str	x2, [x4], #1
+	str	x0, [sp], #-1
+
+	/* str immedate pre-index */
+	str	w0, [x3, #-256]!
+	str	w1, [sp, #255]!
+
+	str	x2, [x4, #1]
+	str	x0, [sp, #-1]
+
+	/* str immediate unsigned offset */
+	str	w0, [x3]
+	str	w0, [x3, #16380]
+	str	w1, [sp, #16380]
+
+	str	x0, [x3]
+	str	x2, [x3, #32760]
+	str	x3, [sp, #32760]
+
+	/* str register */
+	str	w0, [x1, x2, lsl #2]
+	str	w0, [x1, w2, uxtw #2]
+	str	w0, [sp, w2, sxtw]
+	str	w0, [sp, x2, sxtx #0]
+
+	str	x0, [x1, x2, lsl #3]
+	str	x0, [x1, w2, uxtw #3]
+	str	x0, [sp, w2, sxtw]
+	str	x0, [sp, x2, sxtx #0]
+
+	/* strb immediate post-index */
+	strb	w0, [x3], #-256
+	strb	w1, [sp], #255
+
+	/* strb immediate pre-index */
+	strb	w0, [x3, #-256]!
+	strb	w1, [sp, #255]!
+
+	/* strb immediate unsigned offset */
+	strb	w0, [x3]
+	strb	w0, [x3, #4095]
+	strb	w1, [sp, #4095]
+
+	/* strb register */
+	strb	w0, [x1, x2, sxtx #0]
+	strb	w0, [x1, x2, lsl #0]
+	strb	w0, [x1, w2, uxtw]
+	strb	w0, [sp, w2, sxtw]
+	strb	w0, [sp, x2, sxtx]
+
+	/* strh immediate post-index */
+	strh	w0, [x3], #-256
+	strh	w1, [sp], #255
+
+	/* strh immediate pre-index */
+	strh	w0, [x3, #-256]!
+	strh	w1, [sp, #255]!
+
+	/* strh immediate unsigned offset */
+	strh	w0, [x3]
+	strh	w0, [x3, #8190]
+	strh	w1, [sp, #8190]
+	strh	wzr, [sp, #8190]
+	
+	/* strh register */
+	strh	w0, [x1, w2, uxtw #1]
+	strh	w0, [x1, x2, lsl #1]
+	strh	w0, [sp, w2, sxtw]
+	strh	w0, [sp, x2, sxtx #0]
+	strh	wzr, [sp, x2, sxtx #0]
+END(disasm_str_test)
+
+ENTRY(disasm_shifted_reg_with_rsv)
+	/* adds shifted regiser */
+	adds	w0, w1, w3, asr #1
+	adds	x0, x1, x2, lsl #2
+
+	/* cmn shifted register, alias of adds */
+	cmn	w0, w4, lsr #31
+	cmn	x1, x10, asr #63
+
+	/* subs shifted register */
+	subs	w0, w11, w12, lsr #0
+	subs	x1, x12, x11, lsl #63
+
+	/* cmp shifted register, alias of subs */
+	cmp	w0, w1, asr #31
+	cmp	x0, x2, lsl #63
+
+	/* negs shifted register, alias of subs */
+	negs	w0, w1, lsr #31
+	negs	x0, x20, asr #0
+
+	/* sub shifted register */
+	sub	w0, w1, w2, lsl #1
+	sub	x0, x2, x1, lsl #5
+
+	/* neg shifted register */
+	neg	w0, w1, lsl #2
+	neg	x2, x3, asr #8
+END(disasm_shifted_reg_with_rsv)
+
+ENTRY(disasm_shifted_reg_with_ror)
+	/* mvn shifted register */
+	mvn	w0, w1
+	mvn	x0, x1
+
+	mvn	w0, w1, ror #3
+	mvn	x0, x1, ror #2
+
+	mvn	w0, wzr, asr #2
+	mvn	x0, xzr, lsl #1
+
+	/* orn shifted register */
+	orn	w0, wzr, w1
+	orn	x0, xzr, x1
+	
+	orn	w0, w1, w2, ror #3
+	orn	x0, x1, x2, ror #2
+
+	orn	w0, w2, wzr, asr #2
+	orn	x0, x2, xzr, lsr #2
+
+	/* orr shifted register */
+	orr	w0, wzr, w1
+	orr	x0, xzr, x1
+	
+	orr	w0, w1, w2, ror #3
+	orr	x0, x1, x2, ror #2
+
+	orr	w0, w2, wzr, asr #2
+	orr	x0, x2, xzr, lsr #2
+
+	/* and shifted register */
+	and	w0, wzr, w1
+	and	x0, xzr, x1
+	
+	and	w0, w1, w2, ror #3
+	and	x0, x1, x2, ror #2
+
+	and	w0, w2, wzr, asr #2
+	and	x0, x2, xzr, lsr #2
+
+	/* ands shifted register */
+	ands	w0, wzr, w1
+	ands	x0, xzr, x1
+	
+	ands	w0, w1, w2, ror #3
+	ands	x0, x1, x2, ror #2
+
+	ands	w0, w2, wzr, asr #2
+	ands	x0, x2, xzr, lsr #2
+
+	/* bic shifted register */
+	bic	w0, wzr, w1
+	bic	x0, xzr, x1
+	
+	bic	w0, w1, w2, ror #3
+	bic	x0, x1, x2, ror #2
+
+	bic	w0, w2, wzr, asr #2
+	bic	x0, x2, xzr, lsr #2
+
+	/* bics shifted register */
+	bics	w0, wzr, w1
+	bics	x0, xzr, x1
+	
+	bics	w0, w1, w2, ror #3
+	bics	x0, x1, x2, ror #2
+
+	bics	w0, w2, wzr, asr #2
+	bics	x0, x2, xzr, lsr #2
+
+	/* eon shifted register */
+	eon	w0, wzr, w1
+	eon	x0, xzr, x1
+	
+	eon	w0, w1, w2, ror #3
+	eon	x0, x1, x2, ror #2
+
+	eon	w0, w2, wzr, asr #2
+	eon	x0, x2, xzr, lsr #2
+
+	/* eor shifted register */
+	eor	w0, wzr, w1
+	eor	x0, xzr, x1
+	
+	eor	w0, w1, w2, ror #3
+	eor	x0, x1, x2, ror #2
+
+	eor	w0, w2, wzr, asr #2
+	eor	x0, x2, xzr, lsr #2
+
+	/* tst shifted register */
+	tst	w0, w1
+	tst	x0, x1
+
+	tst	w0, w1, ror #3
+	tst	x0, x1, ror #2
+
+	tst	w0, wzr, asr #2
+	tst	x0, xzr, lsl #1
+END(disasm_shifter_reg_with_ror)
+
+.macro CRC32_INST sf, sz, rd, rn, rm
+	.inst 	((\sf << 31) | (0b011010110 << 21) | 	\
+		(\rm << 16)  | (0b0100 << 12) 	   |	\
+		(\sz << 10)  | (\rn << 5)	   |	\
+		(\rd << 0))
+.endm
+
+.macro CRC32B_INST rd, rn, rm
+	CRC32_INST 0b0, 0b0, \rd, \rn, \rm
+.endm
+
+.macro CRC32H_INST rd, rn, rm
+	CRC32_INST 0b0, 0b1, \rd, \rn, \rm
+.endm
+
+.macro CRC32W_INST rd, rn, rm
+	CRC32_INST 0b0, 0b10, \rd, \rn, \rm
+.endm
+
+.macro CRC32X_INST rd, rn, rm
+	CRC32_INST 0b1, 0b11, \rd, \rn, \rm
+.endm
+
+.macro CRC32C_INST sf, sz, rd, rn, rm
+	.inst	((\sf << 31) | (0b0011010110 << 21) | 	\
+		 (\rm << 16) | (0b0101 << 12) 	    |	\
+		 (\sz << 10) | (\rn << 5)	    |	\
+		 (\rd << 0))
+.endm
+
+.macro CRC32CB_INST rd, rn, rm
+	CRC32C_INST 0, 0, \rd, \rn, \rm
+.endm
+
+.macro CRC32CH_INST rd, rn, rm
+	CRC32C_INST 0, 1, \rd, \rn, \rm
+.endm
+
+.macro CRC32CW_INST rd, rn, rm
+	CRC32C_INST 0, 2, \rd, \rn, \rm
+.endm
+
+.macro CRC32CX_INST rd, rn, rm
+	CRC32C_INST 1, 3, \rd, \rn, \rm
+.endm
+
+ENTRY(disasm_type01)
+	/* adc  */
+	adc	wzr, wzr, wzr
+	adc	w0, w1, w2
+
+	adc	xzr, xzr, xzr
+	adc	x0, x1, x2
+
+	/* adcs */
+        adcs	wzr, wzr, wzr 
+        adcs	w0, w1, w2
+
+        adcs	xzr, xzr, xzr
+        adcs	x0, x1, x2
+
+	/* cls */
+	cls	wzr, wzr
+	cls	w0, w1
+	
+	cls	xzr, xzr
+	cls	x1, x28
+	
+	/* clz */
+	clz	wzr, wzr
+	clz	w0, w1
+	
+	clz	xzr, xzr
+	clz	x1, x28
+
+	/* crc32b */
+        CRC32B_INST 31, 31, 31 
+        CRC32B_INST 0, 1, 2
+
+	/* crc32h */
+        CRC32B_INST 31, 31, 31 
+        CRC32B_INST 0, 1, 2
+
+	/* crc32h */	
+        CRC32W_INST 31, 31, 31 
+        CRC32W_INST 0, 1, 2
+
+	/* crc32x */
+        CRC32X_INST 31, 31, 31 
+        CRC32X_INST 0, 1, 2
+
+	/* crc32cb */
+        CRC32CB_INST 31, 31, 31 
+        CRC32CB_INST 0, 1, 2
+
+	/* crc32ch */
+        CRC32CH_INST 31, 31, 31 
+        CRC32CH_INST 0, 1, 2	
+
+	/* crc32cw */
+        CRC32CW_INST 31, 31, 31 
+        CRC32CW_INST 0, 1, 2
+
+	/* crc32cx */
+        CRC32CX_INST 31, 31, 31 
+        CRC32CX_INST 0, 1, 2
+
+	/* asr and asrv */
+	asr	wzr, wzr, wzr 
+        asr	w0, w1, w2
+	
+	asr	xzr, xzr, xzr 
+        asr	x0, x1, x2
+	
+	asrv	wzr, wzr, wzr 
+        asrv	w0, w1, w2
+	
+	asrv	xzr, xzr, xzr 
+        asrv	x0, x1, x2
+
+	/* lsr and lsrv */
+	lsr	wzr, wzr, wzr 
+        lsr	w0, w1, w2
+
+	lsr	xzr, xzr, xzr 
+        lsr	x0, x1, x2
+
+	lsrv	wzr, wzr, wzr 
+        lsrv	w0, w1, w2
+
+	lsrv	xzr, xzr, xzr 
+        lsrv	x0, x1, x2
+
+	/* lsl and lslv */
+	lsl	wzr, wzr, wzr 
+        lsl	w0, w1, w2
+
+	lsl	xzr, xzr, xzr 
+        lsl	x0, x1, x2
+
+	lslv	wzr, wzr, wzr 
+        lslv	w0, w1, w2
+
+	lslv	xzr, xzr, xzr 
+        lslv	x0, x1, x2
+
+	/* ror and rorv */
+	ror	wzr, wzr, wzr 
+        ror	w0, w1, w2
+
+	ror	xzr, xzr, xzr 
+        ror	x0, x1, x2
+
+	rorv	wzr, wzr, wzr 
+        rorv	w0, w1, w2
+
+	rorv	xzr, xzr, xzr 
+        rorv	x0, x1, x2
+
+	/* rbit */
+	rbit	wzr, wzr
+	rbit	w0, w1
+
+	rbit	xzr, xzr
+	rbit	x1, x28
+	
+	/* rev16 */
+	rev16	wzr, wzr
+	rev16	w0, w1
+
+	rev16	xzr, xzr
+	rev16	x1, x28
+
+	/* rev32 */
+	rev32	xzr, xzr
+	rev32	x0, x1
+
+	/* rev/rev64 */
+	rev	xzr, xzr
+	rev	x0, x1
+
+	/* ngc */
+	ngc	wzr, wzr
+	ngc	w0, w1
+
+	ngc	xzr, xzr
+	ngc	x1, x28
+
+	/* sbc */
+	sbc	wzr, wzr, wzr
+	sbc	w0, w0, w1
+
+	sbc	xzr, xzr, xzr
+	sbc	x0, x1, x28
+	
+	/* ngcs */
+	ngcs 	wzr, wzr
+	ngcs	w0, w1
+
+	ngcs	xzr, xzr
+	ngcs	x1, x28
+
+	/* sbcs */
+	sbcs	wzr, wzr, wzr
+	sbcs	w0, w0, w1
+
+	sbcs	xzr, xzr, xzr
+	sbcs	x0, x1, x28
+	
+	/* sdiv */
+	sdiv	wzr, wzr, wzr
+	sdiv	w0, w0, w1
+
+	sdiv	xzr, xzr, xzr
+	sdiv	x0, x1, x28
+
+	/* smulh */
+	smulh	xzr, xzr, xzr
+	smulh	x0, x1, x28
+
+	/* udiv */
+	udiv	wzr, wzr, wzr
+	udiv	w0, w0, w1
+
+	udiv	xzr, xzr, xzr
+	udiv	x0, x1, x28
+
+	/* umulh */
+	umulh	xzr, xzr, xzr
+	umulh	x0, x1, x28
+END(disasm_type01)
