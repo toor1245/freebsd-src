@@ -11,6 +11,8 @@
  *
  */
 
+# .arch_extension crc
+
 #include <machine/asm.h>
 
 #define L(l) .L ## l
@@ -448,3 +450,235 @@ ENTRY(disasm_shifted_reg_with_ror)
 	tst	w0, wzr, asr #2
 	tst	x0, xzr, lsl #1
 END(disasm_shifter_reg_with_ror)
+
+.macro CRC32_INST sf, sz, rd, rn, rm
+	.inst 	((\sf << 31) | (0b011010110 << 21) | 	\
+		(\rm << 16)  | (0b0100 << 12) 	   |	\
+		(\sz << 10)  | (\rn << 5)	   |	\
+		(\rd << 0))
+.endm
+
+.macro CRC32B_INST rd, rn, rm
+	CRC32_INST 0b0, 0b0, \rd, \rn, \rm
+.endm
+
+.macro CRC32H_INST rd, rn, rm
+	CRC32_INST 0b0, 0b1, \rd, \rn, \rm
+.endm
+
+.macro CRC32W_INST rd, rn, rm
+	CRC32_INST 0b0, 0b10, \rd, \rn, \rm
+.endm
+
+.macro CRC32X_INST rd, rn, rm
+	CRC32_INST 0b1, 0b11, \rd, \rn, \rm
+.endm
+
+.macro CRC32C_INST sf, sz, rd, rn, rm
+	.inst	((\sf << 31) | (0b0011010110 << 21) | 	\
+		 (\rm << 16) | (0b0101 << 12) 	    |	\
+		 (\sz << 10) | (\rn << 5)	    |	\
+		 (\rd << 0))
+.endm
+
+.macro CRC32CB_INST rd, rn, rm
+	CRC32C_INST 0, 0, \rd, \rn, \rm
+.endm
+
+.macro CRC32CH_INST rd, rn, rm
+	CRC32C_INST 0, 1, \rd, \rn, \rm
+.endm
+
+.macro CRC32CW_INST rd, rn, rm
+	CRC32C_INST 0, 2, \rd, \rn, \rm
+.endm
+
+.macro CRC32CX_INST rd, rn, rm
+	CRC32C_INST 1, 3, \rd, \rn, \rm
+.endm
+
+ENTRY(disasm_type01)
+	/* adc  */
+	adc	wzr, wzr, wzr
+	adc	w0, w1, w2
+
+	adc	xzr, xzr, xzr
+	adc	x0, x1, x2
+
+	/* adcs */
+        adcs	wzr, wzr, wzr 
+        adcs	w0, w1, w2
+
+        adcs	xzr, xzr, xzr
+        adcs	x0, x1, x2
+
+	/* cls */
+	cls	wzr, wzr
+	cls	w0, w1
+	
+	cls	xzr, xzr
+	cls	x1, x28
+	
+	/* clz */
+	clz	wzr, wzr
+	clz	w0, w1
+	
+	clz	xzr, xzr
+	clz	x1, x28
+
+	/* crc32b */
+        CRC32B_INST 31, 31, 31 
+        CRC32B_INST 0, 1, 2
+
+	/* crc32h */
+        CRC32B_INST 31, 31, 31 
+        CRC32B_INST 0, 1, 2
+
+	/* crc32h */	
+        CRC32W_INST 31, 31, 31 
+        CRC32W_INST 0, 1, 2
+
+	/* crc32x */
+        CRC32X_INST 31, 31, 31 
+        CRC32X_INST 0, 1, 2
+
+	/* crc32cb */
+        CRC32CB_INST 31, 31, 31 
+        CRC32CB_INST 0, 1, 2
+
+	/* crc32ch */
+        CRC32CH_INST 31, 31, 31 
+        CRC32CH_INST 0, 1, 2	
+
+	/* crc32cw */
+        CRC32CW_INST 31, 31, 31 
+        CRC32CW_INST 0, 1, 2
+
+	/* crc32cx */
+        CRC32CX_INST 31, 31, 31 
+        CRC32CX_INST 0, 1, 2
+
+	/* asr and asrv */
+	asr	wzr, wzr, wzr 
+        asr	w0, w1, w2
+	
+	asr	xzr, xzr, xzr 
+        asr	x0, x1, x2
+	
+	asrv	wzr, wzr, wzr 
+        asrv	w0, w1, w2
+	
+	asrv	xzr, xzr, xzr 
+        asrv	x0, x1, x2
+
+	/* lsr and lsrv */
+	lsr	wzr, wzr, wzr 
+        lsr	w0, w1, w2
+
+	lsr	xzr, xzr, xzr 
+        lsr	x0, x1, x2
+
+	lsrv	wzr, wzr, wzr 
+        lsrv	w0, w1, w2
+
+	lsrv	xzr, xzr, xzr 
+        lsrv	x0, x1, x2
+
+	/* lsl and lslv */
+	lsl	wzr, wzr, wzr 
+        lsl	w0, w1, w2
+
+	lsl	xzr, xzr, xzr 
+        lsl	x0, x1, x2
+
+	lslv	wzr, wzr, wzr 
+        lslv	w0, w1, w2
+
+	lslv	xzr, xzr, xzr 
+        lslv	x0, x1, x2
+
+	/* ror and rorv */
+	ror	wzr, wzr, wzr 
+        ror	w0, w1, w2
+
+	ror	xzr, xzr, xzr 
+        ror	x0, x1, x2
+
+	rorv	wzr, wzr, wzr 
+        rorv	w0, w1, w2
+
+	rorv	xzr, xzr, xzr 
+        rorv	x0, x1, x2
+
+	/* rbit */
+	rbit	wzr, wzr
+	rbit	w0, w1
+
+	rbit	xzr, xzr
+	rbit	x1, x28
+	
+	/* rev16 */
+	rev16	wzr, wzr
+	rev16	w0, w1
+
+	rev16	xzr, xzr
+	rev16	x1, x28
+
+	/* rev32 */
+	rev32	xzr, xzr
+	rev32	x0, x1
+
+	/* rev/rev64 */
+	rev	xzr, xzr
+	rev	x0, x1
+
+	/* ngc */
+	ngc	wzr, wzr
+	ngc	w0, w1
+
+	ngc	xzr, xzr
+	ngc	x1, x28
+
+	/* sbc */
+	sbc	wzr, wzr, wzr
+	sbc	w0, w0, w1
+
+	sbc	xzr, xzr, xzr
+	sbc	x0, x1, x28
+	
+	/* ngcs */
+	ngcs 	wzr, wzr
+	ngcs	w0, w1
+
+	ngcs	xzr, xzr
+	ngcs	x1, x28
+
+	/* sbcs */
+	sbcs	wzr, wzr, wzr
+	sbcs	w0, w0, w1
+
+	sbcs	xzr, xzr, xzr
+	sbcs	x0, x1, x28
+	
+	/* sdiv */
+	sdiv	wzr, wzr, wzr
+	sdiv	w0, w0, w1
+
+	sdiv	xzr, xzr, xzr
+	sdiv	x0, x1, x28
+
+	/* smulh */
+	smulh	xzr, xzr, xzr
+	smulh	x0, x1, x28
+
+	/* udiv */
+	udiv	wzr, wzr, wzr
+	udiv	w0, w0, w1
+
+	udiv	xzr, xzr, xzr
+	udiv	x0, x1, x28
+
+	/* umulh */
+	umulh	xzr, xzr, xzr
+	umulh	x0, x1, x28
+END(disasm_type01)
