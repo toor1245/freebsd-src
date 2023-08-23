@@ -116,6 +116,9 @@ enum arm64_format_type {
 	 * OP <RN|SP>, <RM>, {, <extend> { #<amount> } }
 	 */
 	TYPE_04,
+
+	/* OP <WD>, <WN>, <RM> */
+	TYPE_06,
 };
 
 /*
@@ -281,6 +284,22 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_04, 0 },			/* cmp extended register */
 	{ "subs", "SF(1)|1101011001|RM(5)|OPTION(3)|IMM(3)|RN(5)|RD(5)",
 	    TYPE_04, 0 },			/* subs extended register */
+	{ "crc32b", "SF(1)|0011010110|RM(5)|010000|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32h", "SF(1)|0011010110|RM(5)|010001|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32w", "SF(1)|0011010110|RM(5)|010010|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32x", "SF(1)|0011010110|RM(5)|010011|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32cb", "SF(1)|0011010110|RM(5)|010100|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32ch", "SF(1)|0011010110|RM(5)|010101|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32cw", "SF(1)|0011010110|RM(5)|010110|RN(5)|RD(5)",
+	    TYPE_06, 0 },
+	{ "crc32cx", "SF(1)|0011010110|RM(5)|010111|RN(5)|RD(5)",
+	    TYPE_06, 0 },
 	{ NULL, NULL }
 };
 
@@ -755,6 +774,19 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 
 		if (extend != NULL)
 			di->di_printf(", %s #%d", extend, imm);
+
+		break;
+
+	case TYPE_06:
+		/* OP <WD>, <WN>, <RM> */
+
+		arm64_disasm_read_token(i_ptr, insn, "RD", &rd);
+		arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
+		arm64_disasm_read_token(i_ptr, insn, "RM", &rm);
+
+		di->di_printf("%s\t%s, %s, %s", i_ptr->name,
+		    arm64_w_reg(rd, 0), arm64_w_reg(rn, 0),
+		    arm64_reg(sf, rm, 0));
 
 		break;
 	default:
