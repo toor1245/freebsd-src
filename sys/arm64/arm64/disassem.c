@@ -76,6 +76,13 @@ static const char *extend_types[] = {
 	"sxtb", "sxth", "sxtw", "sxtx",
 };
 
+static const char *condition_codes[] = {
+	"eq", "ne", "cs", "cc",
+	"mi", "pl", "vs", "vc",
+	"hi", "ls", "ge", "lt",
+	"gt", "le", "al", "nv"
+};
+
 /*
  * Structure representing single token (operand) inside instruction.
  * name   - name of operand
@@ -116,6 +123,11 @@ enum arm64_format_type {
 	 * OP <RN|SP>, <RM>, {, <extend> { #<amount> } }
 	 */
 	TYPE_04,
+
+	/*
+	 * OP <RD>, <label>
+	 */
+	TYPE_08,
 };
 
 /*
@@ -281,6 +293,20 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_04, 0 },			/* cmp extended register */
 	{ "subs", "SF(1)|1101011001|RM(5)|OPTION(3)|IMM(3)|RN(5)|RD(5)",
 	    TYPE_04, 0 },			/* subs extended register */
+	{ "adrp", "1|IMMLO(2)|10000|IMMHI(19)|RD(5)",
+	    TYPE_08, 0 },
+	{ "adr", "0|IMMLO(2)|10000|IMMHI(19)|RD(5)",
+	    TYPE_08, 0 },
+	{ "b", "000101|IMM(26)",
+	    TYPE_08, 0 },
+	{ "b.", "01010100|IMM(19)|0|COND(4)",
+	    TYPE_08, 0 },
+	{ "bl", "100101|IMM(26)",
+	    TYPE_08, 0 },
+	{ "cbnz", "SF(1)|0110101|IMM(19)|RT(5)",
+	    TYPE_08, 0 },
+	{ "cbz", "SF(1)|0110100|IMM(19)|RT(5)",
+	    TYPE_08, 0 },
 	{ NULL, NULL }
 };
 
@@ -505,11 +531,18 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	/* Indicate if shift type ror is supported */
 	bool has_shift_ror;
 
+	int cond;
+	int64_t label;
+	int immhi, immlo;
+	bool immhi_absent, immlo_absent;
+
 	const char *extend;
 
 	/* Initialize defaults, all are 0 except SF indicating 64bit access */
 	shift = rd = rm = rn = imm = idx = option = amount = scale = 0;
 	sign_ext = 0;
+	label = 0;
+	immhi = immlo = 0;
 	sf = 1;
 	extend = NULL;
 
@@ -755,6 +788,29 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 
 		if (extend != NULL)
 			di->di_printf(", %s #%d", extend, imm);
+
+		break;
+	
+	case TYPE_08:
+		/*
+		 * OP <label>
+		 * OP <RD>, <label>
+		 * OP.<cond> <label>
+		 */
+
+		rd_absent = arm64_disasm_read_token(i_ptr, isnn, "RD", &rd);
+		immhi_absent = arm64_disasm_read_token(i_ptr, insn, "IMMHI",
+		    &immhi);
+		immlo_absent = arm64_disasm_read_token(i_ptr, insn, "IMMLO",
+		    &immlo);
+
+		if (strcmp(i_ptr->name, "adrp") == 0)
+			label = (immhi << 14) | (immlo << 12);
+
+		condition_codes[cond];
+
+		di->di_printaddr((vm_offset_t)((loc & -4096) + label));
+		di_printf("0x%lx", (vm_offset_t) ((loc & -4096) + label));
 
 		break;
 	default:
