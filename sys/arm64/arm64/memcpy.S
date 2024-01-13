@@ -531,10 +531,10 @@ ENTRY(disasm_type01)
         CRC32B_INST 0, 1, 2
 
 	/* crc32h */
-        CRC32B_INST 31, 31, 31 
-        CRC32B_INST 0, 1, 2
+        CRC32H_INST 31, 31, 31 
+        CRC32H_INST 0, 1, 2
 
-	/* crc32h */	
+	/* crc32w */	
         CRC32W_INST 31, 31, 31 
         CRC32W_INST 0, 1, 2
 
