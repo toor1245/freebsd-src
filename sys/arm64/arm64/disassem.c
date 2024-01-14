@@ -447,12 +447,6 @@ arm64_disasm_read_token_sign_ext(struct arm64_insn *insn, u_int opcode,
 	return (EINVAL);
 }
 
-static bool
-arm64_is_bit_set(uint64_t value, uint32_t bit)
-{
-	return ((value >> bit) & 0x1);
-}
-
 /*
  * Creates a 64 bit value with a specified number of ones starting from lsb.
  *
@@ -632,7 +626,7 @@ arm64_move_wide_preferred(int sf, uint32_t immn, uint32_t imms,
 	 */
 	if (sf == 1 && immn != 1)
 		return (false);
-	if (sf == 0 && (immn != 0 || arm64_is_bit_set(imms, 5)))
+	if (sf == 0 && (((immn << 6) | imms) & 0b1100000) != 0)
 		return (false);
 
 	/* For MOVZ, imms must contain no more than 16 ones */
