@@ -116,6 +116,13 @@ enum arm64_format_type {
 	 * OP <RN|SP>, <RM>, {, <extend> { #<amount> } }
 	 */
 	TYPE_04,
+
+	/*
+	 * OP Bitwise Exclusive OR (immediate):
+	 * OP <RD>, <RN>, #<imm>
+	 * OP <RN>, #<imm>
+	 */
+	TYPE_05,
 };
 
 /*
@@ -281,6 +288,17 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_04, 0 },			/* cmp extended register */
 	{ "subs", "SF(1)|1101011001|RM(5)|OPTION(3)|IMM(3)|RN(5)|RD(5)",
 	    TYPE_04, 0 },			/* subs extended register */
+	{ "orr", "SF(1)|01100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|RD(5)",
+	    TYPE_05, OP_RD_SP },
+	    /* orr (bitmask immediate) and mov (bitmask immediate) alias */
+	{ "tst", "SF(1)|11100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|11111",
+	    TYPE_05, 0 },			/* tst (bitmask immediate) */
+	{ "ands", "SF(1)|11100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|RD(5)",
+	    TYPE_05, 0 },			/* ands (bitmask immediate) */
+	{ "and", "SF(1)|00100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|RD(5)",
+	    TYPE_05, OP_RD_SP },		/* and (bitmask immediate) */
+	{ "eor", "SF(1)|10100100|N(1)|IMMR(6)|IMMS(6)|RN(5)|RD(5)",
+	    TYPE_05, OP_RD_SP },		/* eor (bitmask immediate) */
 	{ NULL, NULL }
 };
 
@@ -429,6 +447,205 @@ arm64_disasm_read_token_sign_ext(struct arm64_insn *insn, u_int opcode,
 	return (EINVAL);
 }
 
+/*
+ * Creates a 64 bit value with a specified number of ones starting from lsb.
+ *
+ * Example:
+ * 	`length` = 7
+ * 	`result` = 0b1111111
+ */
+static uint64_t
+arm64_ones(uint32_t length)
+{
+	return ((1ULL << length) - 1);
+}
+
+/*
+ * Replicates `value` bits `esize` times with a fixed size `bit_count`.
+ *
+ * Example:
+ * 	`value`  = 0b10010011, `esize` = 8, `bit_count` = 32
+ * 	`result` = 0b10010011_10010011_10010011_10010011
+ */
+static uint64_t
+arm64_replicate(uint64_t value, uint32_t esize, int bit_count)
+{
+	uint64_t result, set_bits;
+
+	result = value;
+
+	for (set_bits = esize; set_bits < bit_count; set_bits += esize) {
+		value <<= esize;
+		result |= value;
+	}
+
+	return (result);
+}
+
+/*
+ * Performs circular shift to the right, shifts all bits of a binary number
+ * `value` by `shift_count`, the least significant bit is pushed out.
+ *
+ * Example:
+ * 	`value`  = 0b0001_1101_0110_1011, `shift_count` = 2, `width` = 16
+ *	`result` = 0b1100_0111_0101_1010
+ */
+static uint64_t
+arm64_ror(uint64_t value, uint32_t shift_count, uint32_t width)
+{
+	uint64_t result, right_shift, left_shift;
+
+	right_shift = shift_count;
+	left_shift = width - shift_count;
+	result = value >> right_shift;
+	result |= value << left_shift;
+
+	/*
+	 * Ignores redundant bits that we can get in result after left shift
+	 */
+	if (width < 64)
+		result &= arm64_ones(width);
+
+	return (result);
+}
+
+/*
+ * Returns true if bitmask is decoded successfully.
+ * According to Arm64 documentation we must return UNDEFINED
+ * in case of invalid parameters, thus we use false as UNDEFINED
+ * and on high flow of codebase we must print undefined.
+ * Returns true if bitmask is decoded successfully, result stores to
+ * `wmask`. According to Arm64 documentation we must return UNDEFINED
+ * in case of invalid parameters, thus we use false as UNDEFINED and must print
+ * undefined.
+ *
+ * Explanation:
+ * 	Since AArch64 is a fixed-width instruction set of 32-bits,
+ * 	we must use IMMR, IMMS and N to decode 32/64 bits value.
+ *
+ *	N(1 bit)     - defines 64 bit pattern or not.
+ *	IMMS(6 bits) - defines pattern size and number of ones in pattern.
+ *	IMMR(6 bits) - defines number of right rotations to apply to the
+ *	               pattern.
+ *
+ *	Below table explains how to define element size and number
+ *	of ones for pattern from IMMS:
+ * 	------------------------------------------------
+ *	|     IMMS	|  element size |number of ones|
+ *	|---------------|---------------|--------------|
+ *	|1 1 1 1 0 x	|2  bits	|1	       |
+ *	|1 1 1 0 x x	|4  bits	|1-3	       |
+ *	|1 1 0 x x x	|8  bits	|1-7	       |
+ *	|1 0 x x x x	|16 bits	|1-15	       |
+ *	|0 x x x x x	|32 bits	|1-31	       |
+ *	|x x x x x x	|64 bits	|1-63	       |
+ *	------------------------------------------------
+ *
+ * Example:
+ * 	SF = 1, IMMR = 0b000010, IMMS = 0b100101 and N = 0, IMMS matches
+ * 	to 10xxxx, it means element size is 16 bits and
+ * 	number of ones is 5 (0b0101) + 1. Hence value in binary
+ * 	representation will be like this:
+ *
+ * 	63 0000000000111111 48
+ * 	47 0000000000111111 32
+ * 	31 0000000000111111 16
+ * 	15 0000000000111111 0
+ *
+ * 	IMMR is 2, we should apply 2 right rotations, result will be:
+ *
+ *	63 1100000000001111 48
+ *	47 1100000000001111 32
+ *	31 1100000000001111 16
+ *	15 1100000000001111 0
+ */
+static bool
+arm64_disasm_bitmask(int sf, uint32_t n, uint32_t imms, uint32_t immr,
+    bool logical_imm, uint64_t *wmask)
+{
+	uint64_t welem;
+	uint32_t levels, s, r;
+	int width, length, esize;
+
+	width = sf == 1 ? 64 : 32;
+
+	/* Finds index of the highest bit set */
+	length = flsl((n << 6) | (~imms & 0x3F)) - 1;
+
+	if (length < 1)
+		return (false);
+
+	levels = arm64_ones(length);
+
+	/*
+	 * For logical immediates an all-ones value of S is reserved
+	 * since it would generate a useless all-ones result (many times)
+	 */
+	if (logical_imm && (imms & levels) == levels)
+		return (false);
+
+	s = imms & levels;
+	r = immr & levels;
+
+	esize = 1 << length;
+	welem = arm64_ones(s + 1);
+	*wmask = arm64_ror(welem, r, esize);
+	*wmask = arm64_replicate(*wmask, esize, width);
+
+	return (true);
+}
+
+/*
+ * Returns true if bitmask immediate would generate an immediate value that
+ * also could be represented by a single MOVZ, MOVN or MOV (wide immediate)
+ * instruction. Also, this function determines should we use
+ * MOV (bitmask immediate) alias or ORR (immediate).
+ *
+ * Example:
+ * 	  `sf` = 1, `immn` = 1, `imms` = 0b011100, `immr` = 0b000011
+ * 	   First of all, we define `width`, since `sf` is 1 `width` will be 64.
+ * 	   Next step is to combine `immn` and `imms` to check element size
+ * 	   on total immediate size. So, immN:imms(7 bit) = 0b1011100.
+ * 	   and immN:imms matches to 0b1xxxxxx pattern. We skip checks
+ * 	   "imms < 16", imms greater than 16 and `imms` is not greater than
+ * 	   `width` - 15, thus move wide is not preferred and immediate
+ * 	   value e000000003ffffff can be used for MOV (bitmask immediate)
+ * 	   if Rn register is 31.
+ */
+static bool
+arm64_move_wide_preferred(int sf, uint32_t immn, uint32_t imms,
+    uint32_t immr)
+{
+	int width;
+
+	width = sf == 1 ? 64 : 32;
+
+	/*
+	 * Element size must equal total immediate size.
+	 * - for 64 bit immN:imms == '0b1xxxxxx'
+	 * - for 32 bit immN:imms == '0b00xxxxx'
+	 * Since, we know that immN:imms is 7 bit and patterns only take into
+	 * account msb bits, no need to make bit pattern and masks.
+	 * Hence, we can check only certain bits.
+	 */
+	if (sf == 1 && immn != 1)
+		return (false);
+	if (sf == 0 && (((immn << 6) | imms) & 0b1100000) != 0)
+		return (false);
+
+	/* For MOVZ, imms must contain no more than 16 ones */
+	if (imms < 16)
+		/* Ones must not span halfword boundary when rotated */
+		return (-immr % 16 <= 15 - imms);
+
+	/* For MOVZ, imms must contain no more than 16 zeros */
+	if (imms >= width - 15)
+		/* Zeros must not span halfword boundary when rotated */
+		return (immr % 16 <= imms - width - 15);
+
+	return (false);
+}
+
 static const char *
 arm64_disasm_reg_extend(int sf, int option, int rd, int rn, int amount)
 {
@@ -490,11 +707,13 @@ vm_offset_t
 disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 {
 	struct arm64_insn *i_ptr = arm64_i;
+	uint64_t wmask;
 	uint32_t insn;
 	int matchp;
 	int ret;
 	int shift, rm, rt, rd, rn, imm, sf, idx, option, scale, amount;
 	int sign_ext;
+	uint32_t immr, imms, n;
 	bool rm_absent, rd_absent, rn_absent;
 	/* Indicate if immediate should be outside or inside brackets */
 	int inside;
@@ -504,14 +723,23 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	int rm_sp, rt_sp, rd_sp, rn_sp;
 	/* Indicate if shift type ror is supported */
 	bool has_shift_ror;
+	/* Indicate if bitmask is decoded or print undefined */
+	bool decoded;
+	/*
+	 * Indicate if mov (bitmask immediate) preferred than orr (immediate)
+	 */
+	bool mov_preferred;
 
 	const char *extend;
 
 	/* Initialize defaults, all are 0 except SF indicating 64bit access */
+	wmask = 0;
 	shift = rd = rm = rn = imm = idx = option = amount = scale = 0;
 	sign_ext = 0;
+	immr = imms = n = 0;
 	sf = 1;
 	extend = NULL;
+	mov_preferred = decoded = false;
 
 	matchp = 0;
 	insn = di->di_readword(loc);
@@ -755,6 +983,44 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 
 		if (extend != NULL)
 			di->di_printf(", %s #%d", extend, imm);
+
+		break;
+
+	case TYPE_05:
+		/*
+		 * OP Bitwise Exclusive OR (immediate):
+		 * OP <RD>, <RN>, #<imm>
+		 * OP <RN>, #<imm>
+		 */
+
+		rd_absent = arm64_disasm_read_token(i_ptr, insn, "RD", &rd);
+		arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
+		arm64_disasm_read_token(i_ptr, insn, "N", &n);
+		arm64_disasm_read_token(i_ptr, insn, "IMMR", &immr);
+		arm64_disasm_read_token(i_ptr, insn, "IMMS", &imms);
+
+		if (sf == 0 && n != 0)
+			goto undefined;
+
+		decoded = arm64_disasm_bitmask(sf, n, imms, immr,
+		    true, &wmask);
+
+		if (!decoded)
+			goto undefined;
+
+		mov_preferred = strcmp(i_ptr->name, "orr") == 0
+		    && rn == 31
+		    && !arm64_move_wide_preferred(sf, n, imms, immr);
+
+		di->di_printf("%s\t", mov_preferred ? "mov" : i_ptr->name);
+
+		if (!rd_absent)
+			di->di_printf("%s, ", arm64_reg(sf, rd, rd_sp));
+
+		if (!mov_preferred)
+			di->di_printf("%s, ", arm64_reg(sf, rn, 0));
+
+		di->di_printf("#0x%lx", wmask);
 
 		break;
 	default:
