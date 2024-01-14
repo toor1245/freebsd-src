@@ -720,11 +720,11 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	/* Indicate if shift type ror is supported */
 	bool has_shift_ror;
 	/* Indicate if bitmask is decoded or print undefined */
-	bool is_bitmask_decoded;
+	bool decoded;
 	/*
 	 * Indicate if mov (bitmask immediate) preferred than orr (immediate)
 	 */
-	bool mov_bitmask_preferred_orr;
+	bool mov_preferred;
 
 	const char *extend;
 
@@ -735,7 +735,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	immr = imms = n = 0;
 	sf = 1;
 	extend = NULL;
-	mov_bitmask_preferred_orr = is_bitmask_decoded = false;
+	mov_preferred = decoded = false;
 
 	matchp = 0;
 	insn = di->di_readword(loc);
@@ -999,25 +999,22 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		if (sf == 0 && n != 0)
 			goto undefined;
 
-		is_bitmask_decoded = arm64_disasm_bitmask(sf, n, imms, immr,
+		decoded = arm64_disasm_bitmask(sf, n, imms, immr,
 		    true, &wmask);
 
-		if (!is_bitmask_decoded)
+		if (!decoded)
 			goto undefined;
 
-		mov_bitmask_preferred_orr = strcmp(i_ptr->name, "orr") == 0
+		mov_preferred = strcmp(i_ptr->name, "orr") == 0
 		    && rn == 31
 		    && !arm64_move_wide_preferred(sf, n, imms, immr);
 
-		if (mov_bitmask_preferred_orr)
-			di->di_printf("%s\t", "mov");
-		else
-			di->di_printf("%s\t", i_ptr->name);
+		di->di_printf("%s\t", mov_preferred ? "mov" : i_ptr->name);
 
 		if (!rd_absent)
 			di->di_printf("%s, ", arm64_reg(sf, rd, rd_sp));
 
-		if (!mov_bitmask_preferred_orr)
+		if (!mov_preferred)
 			di->di_printf("%s, ", arm64_reg(sf, rn, 0));
 
 		di->di_printf("#0x%lx", wmask);
