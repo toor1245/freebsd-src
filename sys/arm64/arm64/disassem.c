@@ -51,6 +51,9 @@
 #define	OP_RN_SP	(1UL << 9)	/* Use sp for RN otherwise xzr */
 #define	OP_RM_SP	(1UL << 10)	/* Use sp for RM otherwise xzr */
 #define	OP_SHIFT_ROR	(1UL << 11)	/* Use ror shift type */
+#define	OP_MULT_SCALE	(1UL << 12)	/* Multiply immediate by scale */
+#define	OP_MULT_16	(1UL << 13)	/* Multiply immediate by 16 */
+#define	OP_SIGN_OFF	(1UL << 14)	/* Use addr mode signed offset */
 
 static const char *w_reg[] = {
 	"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7",
@@ -104,6 +107,10 @@ enum arm64_format_type {
 	 * OP <RT>, [<XN|SP>], #<simm>
 	 * OP <RT>, [<XN|SP> {, #<pimm> }]
 	 * OP <RT>, [<XN|SP>, <RM> {, EXTEND AMOUNT }]
+	 * OP <RT1>, <RT2>, [<XN|SP>, #<imm>]!
+	 * OP <RT1>, <RT2>, [<XN|SP>], #<imm>
+	 * OP <RT1>, <RT2>, [<XN|SP> {, #<imm> }]
+	 * OP <RS>, <RT1>, <RT2>, [<XN|SP> {, #0 }]
 	 */
 	TYPE_02,
 
@@ -280,6 +287,32 @@ static struct arm64_insn arm64_i[] = {
 	    TYPE_04, 0 },			/* cmp extended register */
 	{ "subs", "SF(1)|1101011001|RM(5)|OPTION(3)|IMM(3)|RN(5)|RD(5)",
 	    TYPE_04, 0 },			/* subs extended register */
+	{ "ldnp", "SF(1)|010100001|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
+	    /* ldnp signed offset */
+	{ "ldp", "SF(1)|010100|OPTION(2)|1|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
+	    /* ldp pre/post index, signed offset */
+	{ "ldpsw", "0110100|OPTION(2)|1|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_4 },
+	    /* ldpsw pre/post index, signed offset */
+	{ "ldxp", "1|SF(1)|001000011111110|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_OFF },			/* ldxp, #0 offset */
+	{ "ldaxp", "1|SF(1)|001000011111111|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_OFF },			/* ldaxp, #0 offset */
+	{ "stnp", "SF(1)|010100000|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
+	    /* stnp signed offset */
+	{ "stp", "SF(1)|010100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_SCALE },
+	    /* stp pre/post index, signed offset */
+	{ "stxp", "1|SF(1)|001000001|RS(5)|0|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* stxp, #0 offset */
+	{ "stlxp", "1|SF(1)|001000001|RS(5)|1|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, 0 },			/* stlxp, #0 offset */
+	{ "stgp", "0110100|OPTION(2)|0|IMM(7)|RT2(5)|RN(5)|RT(5)",
+	    TYPE_02, OP_SIGN_EXT | OP_MULT_16 },
+	    /* stgp pre/post index, signed offset */
 	{ NULL, NULL }
 };
 
@@ -494,7 +527,8 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	int ret;
 	int shift, rm, rt, rd, rn, imm, sf, idx, option, scale, amount;
 	int sign_ext;
-	bool rm_absent, rd_absent, rn_absent;
+	int rs, rt2;
+	bool rm_absent, rd_absent, rn_absent, rs_absent, rt2_absent;
 	/* Indicate if immediate should be outside or inside brackets */
 	int inside;
 	/* Print exclamation mark if pre-incremented */
@@ -505,6 +539,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	bool has_shift_ror;
 
 	const char *extend;
+	bool has_mult_scale;
 
 	/* Initialize defaults, all are 0 except SF indicating 64bit access */
 	shift = rd = rm = rn = imm = idx = option = amount = scale = 0;
@@ -544,6 +579,10 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		arm64_disasm_read_token(i_ptr, insn, "IMM", &imm);
 	if (i_ptr->special_ops & OP_MULT_4)
 		imm <<= 2;
+	if (i_ptr->special_ops & OP_MULT_16)
+		imm <<= 4;
+
+	has_mult_scale = i_ptr->special_ops & OP_MULT_SCALE;
 
 	rm_sp = i_ptr->special_ops & OP_RM_SP;
 	rt_sp = i_ptr->special_ops & OP_RT_SP;
@@ -612,22 +651,20 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		 * OP <RT>, [<XN|SP>], #<simm>
 		 * OP <RT>, [<XN|SP> {, #<pimm> }]
 		 * OP <RT>, [<XN|SP>, <RM> {, EXTEND AMOUNT }]
+		 * OP <RT1>, <RT2>, [<XN|SP>, #<imm>]!
+		 * OP <RT1>, <RT2>, [<XN|SP>], #<imm>
+		 * OP <RT1>, <RT2>, [<XN|SP> {, #<imm> }]
+		 * OP <RS>, <RT1>, <RT2>, [<XN|SP> {, #0 }]
 		 */
 
-		/* Mandatory tokens */
-		ret = arm64_disasm_read_token(i_ptr, insn, "RT", &rt);
-		ret |= arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
-		if (ret != 0) {
-			printf("ERROR: "
-			    "Missing mandatory token for op %s type %d\n",
-			    i_ptr->name, i_ptr->type);
-			goto undefined;
-		}
-
-		/* Optional tokens */
+		arm64_disasm_read_token(i_ptr, insn, "RT", &rt);
 		arm64_disasm_read_token(i_ptr, insn, "OPTION", &option);
 		arm64_disasm_read_token(i_ptr, insn, "SCALE", &scale);
+
+		rn_absent = arm64_disasm_read_token(i_ptr, insn, "RN", &rn);
 		rm_absent = arm64_disasm_read_token(i_ptr, insn, "RM", &rm);
+		rs_absent = arm64_disasm_read_token(i_ptr, insn, "RS", &rs);
+		rt2_absent = arm64_disasm_read_token(i_ptr, insn, "RT2", &rt2);
 
 		if (rm_absent) {
 			/*
@@ -639,6 +676,28 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 				    ARM_INSN_SIZE_MASK);
 				option = 0;
 			}
+
+			/*
+			 * If store/load pair registers instruction and has 
+			 * OP_MULT_SCALE, shift <imm> value to 2 + SF (opc<1>).
+			 * - If SF is 0, we use 32-bit access
+			 *   and multiply by 4.
+			 * - If SF is 1, we use 64-bit access
+			 *   and multiply by 8.
+			 */
+			if (has_mult_scale)
+				imm <<= 2 + sf;
+
+			di->di_printf("%s\t", i_ptr->name);
+
+			if (!rs_absent)
+				di->di_printf("%s, ", arm64_reg(sf, rs, 0));
+
+			di->di_printf("%s, ", arm64_reg(sf, rt, 0));
+
+			if (!rt2_absent)
+				di->di_printf("%s, ", arm64_reg(sf, rt2, 0));
+
 			switch (option) {
 			case 0x0:
 				pre = 0;
@@ -655,8 +714,6 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 				break;
 			}
 
-			di->di_printf("%s\t%s, ", i_ptr->name,
-			    arm64_reg(sf, rt, rt_sp));
 			if (inside != 0) {
 				di->di_printf("[%s", arm64_x_reg(rn, 1));
 				if (imm != 0)
