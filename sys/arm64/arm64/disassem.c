@@ -725,8 +725,6 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	int rm_sp, rt_sp, rd_sp, rn_sp;
 	/* Indicate if shift type ror is supported */
 	bool has_shift_ror;
-	/* Indicate if bitmask is decoded or print undefined */
-	bool decoded;
 	/*
 	 * Indicate if mov (bitmask immediate) preferred than orr (immediate)
 	 */
@@ -741,7 +739,7 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 	immr = imms = n = 0;
 	sf = 1;
 	extend = NULL;
-	mov_preferred = decoded = false;
+	mov_preferred = false;
 
 	matchp = 0;
 	insn = di->di_readword(loc);
@@ -1004,10 +1002,8 @@ disasm(const struct disasm_interface *di, vm_offset_t loc, int altfmt)
 		if (sf == 0 && n != 0)
 			goto undefined;
 
-		decoded = arm64_disasm_bitmask(sf, n, imms, immr,
-		    true, &wmask);
-
-		if (!decoded)
+		if (!arm64_disasm_bitmask(sf, n, imms, immr,
+		    true, &wmask))
 			goto undefined;
 
 		mov_preferred = strcmp(i_ptr->name, "orr") == 0
